@@ -14,7 +14,7 @@ def build():
             shutil.rmtree(folder)
             
     # 2. Definir caminhos
-    project_root = Path.cwd()
+    project_root = Path(__file__).parent.parent
     main_script = project_root / "main.py"
     models_dir = project_root / "models"
     assets_dir = project_root / "assets"

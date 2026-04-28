@@ -5,7 +5,6 @@ import ctypes
 import os
 import sys
 import time
-import webbrowser
 from ctypes import wintypes
 from pathlib import Path
 
@@ -3095,7 +3094,7 @@ class MainWindow(QMainWindow):
             
             # Botões customizados
             btn_download = dialog.addButton(self._tr("Download Now"), QMessageBox.ActionRole)
-            btn_close = dialog.addButton(self._tr("Close"), QMessageBox.RejectRole)
+            dialog.addButton(self._tr("Close"), QMessageBox.RejectRole)
             
             dialog.exec()
             

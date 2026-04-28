@@ -1,6 +1,5 @@
 import json
 import urllib.request
-from typing import Optional
 from PySide6.QtCore import QThread, Signal
 
 class UpdateChecker(QThread):
@@ -50,6 +49,6 @@ class UpdateChecker(QThread):
             c_parts += [0] * (max_len - len(c_parts))
             
             return l_parts > c_parts
-        except:
+        except Exception:
             # Fallback para comparação de string se o formato for estranho
             return latest > current

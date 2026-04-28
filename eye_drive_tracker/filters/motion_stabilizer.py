@@ -245,6 +245,18 @@ class MotionAxisStabilizer:
 
         movement_ratio = 1.0 if movement_gate <= 0.0 else _clamp(abs(filtered_delta) / max(movement_gate * 6.0, 0.001), 0.0, 1.0)
         smooth_factor = 1.0 - (_clamp(float(smoothing), 0.0, 1.0) * 0.65)
+        if self.state == "STILL" and abs(raw_output_delta) <= release_gate:
+            return AxisStabilizerResult(
+                value=self.filtered,
+                raw=raw,
+                prefiltered=filtered_input,
+                threshold=movement_gate,
+                alpha=0.0,
+                state=self.state,
+                still_frames=self.still_frames,
+                jitter_detected=True,
+                spike_rejected=False,
+            )
         if self.state == "STILL":
             alpha = _time_adjusted_alpha(alpha_still * smooth_factor, delta_seconds)
         else:

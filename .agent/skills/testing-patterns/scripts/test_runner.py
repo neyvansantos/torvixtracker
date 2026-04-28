@@ -66,7 +66,7 @@ def detect_test_framework(project_path: Path) -> dict:
                 result["cmd"] = ["npx", "jest"]
                 result["coverage_cmd"] = ["npx", "jest", "--coverage"]
                 
-        except:
+        except Exception:
             pass
     
     # Python project
@@ -97,9 +97,14 @@ def run_tests(cmd: list, cwd: Path) -> dict:
     }
     
     try:
+        import os
+        env = os.environ.copy()
+        env["PYTHONPATH"] = str(cwd) + os.pathsep + env.get("PYTHONPATH", "")
+        
         proc = subprocess.run(
             cmd,
             cwd=str(cwd),
+            env=env,
             capture_output=True,
             text=True,
             encoding='utf-8',
@@ -151,7 +156,7 @@ def main():
     with_coverage = "--coverage" in sys.argv
     
     print(f"\n{'='*60}")
-    print(f"[TEST RUNNER] Unified Test Execution")
+    print("[TEST RUNNER] Unified Test Execution")
     print(f"{'='*60}")
     print(f"Project: {project_path}")
     print(f"Coverage: {'enabled' if with_coverage else 'disabled'}")
