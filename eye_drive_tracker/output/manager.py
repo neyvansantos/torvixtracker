@@ -20,7 +20,7 @@ class OutputMode(str, Enum):
 
 OUTPUT_MODE_LABELS = {
     OutputMode.FREETRACK: "FreeTrack",
-    OutputMode.TRACKIR: "TrackIR compatible",
+    OutputMode.TRACKIR: "TrackIR compatible (Recommended)",
     OutputMode.VJOY: "vJoy",
     OutputMode.MOUSE_LOOK: "Mouse Look fallback",
 }

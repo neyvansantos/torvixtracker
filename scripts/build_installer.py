@@ -51,7 +51,7 @@ def build_installer():
         subprocess.run([iscc_path, str(iss_file)], check=True)
         print("\n" + "="*40)
         print("INSTALADOR CRIADO COM SUCESSO!")
-        print(f"Arquivo: dist/TorvixTracker_Setup.exe")
+        print("Arquivo: dist/TorvixTracker_Setup.exe")
         print("="*40)
         return True
     except subprocess.CalledProcessError as e:

@@ -258,10 +258,20 @@ class MotionAxisStabilizer:
                 spike_rejected=False,
             )
         if self.state == "STILL":
-            alpha = _time_adjusted_alpha(alpha_still * smooth_factor, delta_seconds)
-        else:
-            moving_alpha = alpha_still + ((alpha_moving - alpha_still) * movement_ratio)
-            alpha = _time_adjusted_alpha(moving_alpha * smooth_factor, delta_seconds)
+            return AxisStabilizerResult(
+                value=self.filtered,
+                raw=raw,
+                prefiltered=filtered_input,
+                threshold=movement_gate,
+                alpha=0.0,
+                state=self.state,
+                still_frames=self.still_frames,
+                jitter_detected=True,
+                spike_rejected=False,
+            )
+
+        moving_alpha = alpha_still + ((alpha_moving - alpha_still) * movement_ratio)
+        alpha = _time_adjusted_alpha(moving_alpha * smooth_factor, delta_seconds)
 
         output = self.filtered + (filtered_input - self.filtered) * alpha
         if scaled_max_step > 0.0:

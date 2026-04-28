@@ -58,8 +58,8 @@ def run_installer_build():
         installer_script = Path(__file__).parent / "build_installer.py"
         subprocess.run([python_exe, str(installer_script)], check=True)
         return True
-    except Exception as e:
-        print(f"Aviso: Nao foi possivel criar o instalador. Certifique-se de que o Inno Setup esta instalado.")
+    except Exception:
+        print("Aviso: Nao foi possivel criar o instalador. Certifique-se de que o Inno Setup esta instalado.")
         return True # Não trava o release se o instalador falhar
 
 def git_sync(version):

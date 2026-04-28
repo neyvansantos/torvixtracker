@@ -64,6 +64,7 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
         "gaze right": "gaze right",
         "gaze up": "gaze up",
         "gaze down": "gaze down",
+        "TrackIR compatible (Recommended)": "TrackIR compatible (Recommended)",
     },
     "POR": {
         "User Profile": "Perfil do Usuário",
@@ -197,7 +198,7 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
         "Start Tracking": "Iniciar rastreio",
         "Stop Tracking": "Parar rastreio",
         "FreeTrack": "FreeTrack",
-        "TrackIR compatible": "Compatível com TrackIR",
+        "TrackIR compatible (Recommended)": "Compatível com TrackIR (Recomendado)",
         "vJoy": "vJoy",
         "Mouse Look fallback": "Fallback Mouse Look",
         "Stopped": "Parado",
@@ -316,6 +317,7 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
         "gaze right": "iris derecha",
         "gaze up": "iris arriba",
         "gaze down": "iris abajo",
+        "TrackIR compatible (Recommended)": "Compatible con TrackIR (Recomendado)",
     }
 }
 

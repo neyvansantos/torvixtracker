@@ -576,7 +576,7 @@ class PoseFilter:
         head = self._process_head(delta, config, delta_seconds)
         gaze, gaze_debug = self._process_gaze(head, raw_gaze, config, delta_seconds)
         extended, extended_debug = self._process_extended(head, config, delta_seconds)
-        combined = self._combine_head_and_gaze(head, gaze, extended, gaze_debug, delta_seconds)
+        combined = self._combine_head_and_gaze(head, gaze, extended, gaze_debug, config, delta_seconds)
         final, stabilization_debug = self._stabilize_output(combined, config, delta_seconds)
         self._maybe_log_stabilization(combined, final, stabilization_debug)
         extended_debug.final = final
@@ -919,6 +919,7 @@ class PoseFilter:
         gaze_pose: PoseSample,
         extended_pose: PoseSample,
         gaze_debug: GazeDebug,
+        config: TrackingConfig,
         delta_seconds: float | None,
     ) -> PoseSample:
         distance_stability = clamp(max(gaze_debug.face_confidence, gaze_debug.iris_confidence * 0.75), 0.0, 1.0)
@@ -942,7 +943,12 @@ class PoseFilter:
         )
         if gaze_debug.face_confidence <= 0.05 and iris_reliability >= 0.90 and not gaze_debug.iris_lost:
             gaze_target = 1.0
-        head_target = clamp(1.0 + ((1.0 - gaze_target) * 0.08), 1.0, 1.08)
+        
+        # Só aplica o bias de cabeça se o gaze estiver realmente habilitado e sendo usado
+        if gaze_debug.source == "disabled" or config.gaze_strength <= 0.0:
+            head_target = 1.0
+        else:
+            head_target = clamp(1.0 + ((1.0 - gaze_target) * 0.08), 1.0, 1.08)
         if not self._has_final_previous and self._blend_gaze_weight == 0.0 and self._blend_head_weight == 1.0:
             self._blend_gaze_weight = gaze_target
             self._blend_head_weight = head_target
