@@ -30,7 +30,7 @@ def build():
     # --onefile: empacota tudo em um único .exe (opcional, mas o usuário prefere)
     
     command = [
-        "python", "-m", "PyInstaller",
+        sys.executable, "-m", "PyInstaller",
         "--noconsole",
         "--onefile",
         "--name", "TorvixTracker",

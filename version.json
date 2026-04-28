@@ -1,5 +1,5 @@
 {
-  "version": "0.1.0",
-  "download_url": "https://github.com/neyvan/TorvixTracker/releases/latest",
-  "changelog": "Versão inicial com sistema de atualização integrado e melhorias na estabilidade do rastreamento."
+  "version": "0.1.1",
+  "download_url": "https://github.com/NeyvanSantos/TorvixTracker/releases/latest",
+  "changelog": "Versão 0.1.1 com sistema de atualização integrado, traduções atualizadas e melhorias na estabilidade do rastreamento."
 }
