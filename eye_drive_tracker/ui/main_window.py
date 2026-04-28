@@ -1069,7 +1069,7 @@ class MainWindow(QMainWindow):
         self.recenter_hotkey_monitor = RecenterHotkeyMonitor(self)
         self.recenter_hotkey_monitor.activated.connect(self._recenter)
         self._game_functions_dialog: QDialog | None = None
-        self._update_url = "https://raw.githubusercontent.com/neyvan/TorvixTracker/main/version.json"
+        self._update_url = "https://raw.githubusercontent.com/NeyvanSantos/TorvixTracker/main/version.json"
         self._update_checker: UpdateChecker | None = None
 
         self._build_ui()
