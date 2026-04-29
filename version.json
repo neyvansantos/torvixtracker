@@ -1,5 +1,5 @@
 {
-  "version": "0.1.3",
-  "download_url": "https://github.com/NeyvanSantos/TorvixTracker/releases/latest",
-  "changelog": "Colocamos o sufixo (Recomendado) no modo de saida TrackIR e corrigimos falhas de estabilidade nos filtros de movimento."
+  "version": "0.1.4",
+  "download_url": "",
+  "changelog": "Eliminacao completa de microstutter: output desacoplado a 120Hz fixo com thread TIME_CRITICAL, relogio unificado perf_counter, interpolacao suave com extrapolacao, spin-wait de precisao sub-ms e timeBeginPeriod(1)."
 }

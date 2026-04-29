@@ -1,6 +1,6 @@
 ; Script gerado pelo Antigravity para o Torvix Tracker
 #define AppName "Torvix Tracker"
-#define AppVersion "--version"
+#define AppVersion "0.1.4"
 #define AppPublisher "Neyvan Santos"
 #define AppURL "https://github.com/NeyvanSantos/TorvixTracker"
 #define AppExeName "TorvixTracker.exe"

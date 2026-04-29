@@ -24,12 +24,34 @@ class _ZoomLandmarks:
     zoom_size: tuple[int, int]
 
 
+@dataclass
+class _PoseAxisStillness:
+    anchor: float = 0.0
+    last_input: float = 0.0
+    quiet_frames: int = 0
+    release_frames: int = 0
+    locked: bool = False
+    initialized: bool = False
+
+    def initialize(self, value: float) -> None:
+        self.anchor = float(value)
+        self.last_input = float(value)
+        self.quiet_frames = 0
+        self.release_frames = 0
+        self.locked = False
+        self.initialized = True
+
+
 class HeadPoseTracker:
     _LANDMARK_YAW_BLEND = 0.78
     _LANDMARK_NOSE_YAW_SCALE = 68.0
     _LANDMARK_DEPTH_YAW_SCALE = 40.0
     _LANDMARK_YAW_LIMIT = 55.0
-    _YAW_MAX_STEP_PER_FRAME = 3.0
+    _YAW_MAX_STEP_PER_FRAME = 6.0
+    _RAW_STILL_FRAMES_REQUIRED = 5
+    _RAW_RELEASE_FRAMES_REQUIRED = 1
+    _RAW_STILL_WINDOW_MULTIPLIER = 3.0
+    _RAW_RELEASE_MULTIPLIER = 4.0
     _TRACKING_RESET_MISSED_DETECTIONS = 8
     _POSE_RESET_MISSED_DETECTIONS = 90
     _IRIS_ZOOM_CONFIDENCE_TRIGGER = 0.34
@@ -77,6 +99,7 @@ class HeadPoseTracker:
         self._camera_matrix_size: Optional[tuple[int, int]] = None
         self._last_pose_timestamp: Optional[float] = None
         self._pose_ema_enabled = True
+        self._reset_pose_stillness()
         self._init_mediapipe()
         self._init_haar()
 
@@ -936,6 +959,7 @@ class HeadPoseTracker:
         self._last_pose = PoseSample()
         self._has_last_pose = False
         self._last_pose_timestamp = None
+        self._reset_pose_stillness()
 
     def _stabilize_pose(self, pose: PoseSample) -> PoseSample:
         now = time.monotonic()
@@ -952,7 +976,9 @@ class HeadPoseTracker:
         if not self._has_last_pose:
             self._last_pose = pose
             self._has_last_pose = True
+            self._reset_pose_stillness(pose)
             return pose
+        self._ensure_pose_stillness()
 
         stabilized = PoseSample(
             yaw=self._guard_axis(
@@ -969,6 +995,7 @@ class HeadPoseTracker:
         )
         if getattr(self, "_pose_ema_enabled", False):
             stabilized = self._adaptive_ema_pose(stabilized, self._last_pose, delta_seconds)
+        stabilized = self._hold_still_pose(pose, stabilized, self._last_pose)
         self._last_pose = stabilized
         return stabilized
 
@@ -976,13 +1003,104 @@ class HeadPoseTracker:
     def _guard_axis(value: float, previous: float, jitter: float, max_step: float) -> float:
         delta = value - previous
         if abs(delta) <= jitter:
-            if jitter <= 0.0:
-                return value
-            blend = 0.30 + 0.70 * (abs(delta) / jitter)
-            return previous + delta * blend
+            return previous
         if abs(delta) > max_step:
             return previous + math.copysign(max_step, delta)
         return value
+
+    def _reset_pose_stillness(self, pose: PoseSample | None = None) -> None:
+        pose = PoseSample() if pose is None else pose
+        self._pose_stillness_yaw = _PoseAxisStillness()
+        self._pose_stillness_pitch = _PoseAxisStillness()
+        self._pose_stillness_roll = _PoseAxisStillness()
+        self._pose_stillness_x = _PoseAxisStillness()
+        self._pose_stillness_y = _PoseAxisStillness()
+        self._pose_stillness_z = _PoseAxisStillness()
+        for axis, value in (
+            (self._pose_stillness_yaw, pose.yaw),
+            (self._pose_stillness_pitch, pose.pitch),
+            (self._pose_stillness_roll, pose.roll),
+            (self._pose_stillness_x, pose.x),
+            (self._pose_stillness_y, pose.y),
+            (self._pose_stillness_z, pose.z),
+        ):
+            axis.initialize(value)
+
+    def _ensure_pose_stillness(self) -> None:
+        if not hasattr(self, "_pose_stillness_yaw"):
+            self._reset_pose_stillness(getattr(self, "_last_pose", PoseSample()))
+
+    def _hold_still_pose(self, raw: PoseSample, filtered: PoseSample, previous: PoseSample) -> PoseSample:
+        return PoseSample(
+            yaw=self._hold_still_axis(raw.yaw, filtered.yaw, previous.yaw, self._pose_stillness_yaw, jitter=0.22),
+            pitch=self._hold_still_axis(
+                raw.pitch,
+                filtered.pitch,
+                previous.pitch,
+                self._pose_stillness_pitch,
+                jitter=0.22,
+            ),
+            roll=self._hold_still_axis(raw.roll, filtered.roll, previous.roll, self._pose_stillness_roll, jitter=0.18),
+            x=self._hold_still_axis(raw.x, filtered.x, previous.x, self._pose_stillness_x, jitter=0.06),
+            y=self._hold_still_axis(raw.y, filtered.y, previous.y, self._pose_stillness_y, jitter=0.06),
+            z=self._hold_still_axis(raw.z, filtered.z, previous.z, self._pose_stillness_z, jitter=0.08),
+        )
+
+    @classmethod
+    def _hold_still_axis(
+        cls,
+        raw_value: float,
+        filtered_value: float,
+        previous_value: float,
+        state: _PoseAxisStillness,
+        *,
+        jitter: float,
+    ) -> float:
+        raw = float(raw_value)
+        filtered = float(filtered_value)
+        previous = float(previous_value)
+        if not math.isfinite(raw) or not math.isfinite(filtered):
+            return previous
+
+        if not state.initialized:
+            state.initialize(raw)
+            return filtered
+
+        jitter = max(0.0, float(jitter))
+        still_window = max(jitter * cls._RAW_STILL_WINDOW_MULTIPLIER, jitter + 0.05)
+        release_gate = max(jitter * cls._RAW_RELEASE_MULTIPLIER, still_window + 0.15)
+        frame_delta = raw - state.last_input
+        anchor_delta = raw - state.anchor
+        state.last_input = raw
+
+        if state.locked:
+            if abs(anchor_delta) <= release_gate:
+                state.quiet_frames = cls._RAW_STILL_FRAMES_REQUIRED
+                state.release_frames = 0
+                return previous
+            state.release_frames += 1
+            if state.release_frames < cls._RAW_RELEASE_FRAMES_REQUIRED:
+                return previous
+            state.locked = False
+            state.quiet_frames = 0
+            state.release_frames = 0
+            state.anchor = raw
+            return filtered
+
+        quiet = abs(anchor_delta) <= still_window and abs(frame_delta) <= still_window
+        if quiet:
+            state.quiet_frames = min(state.quiet_frames + 1, cls._RAW_STILL_FRAMES_REQUIRED)
+            state.release_frames = 0
+            if state.quiet_frames >= cls._RAW_STILL_FRAMES_REQUIRED:
+                state.locked = True
+                state.anchor = previous
+                return previous
+        else:
+            state.quiet_frames = 0
+            state.release_frames = 0
+            state.anchor = raw
+
+        return filtered
 
     @classmethod
     def _adaptive_ema_pose(
@@ -992,12 +1110,12 @@ class HeadPoseTracker:
         delta_seconds: float | None,
     ) -> PoseSample:
         return PoseSample(
-            yaw=cls._adaptive_ema_axis(target.yaw, previous.yaw, delta_seconds, slow_alpha=0.46, fast_alpha=0.88),
-            pitch=cls._adaptive_ema_axis(target.pitch, previous.pitch, delta_seconds, slow_alpha=0.48, fast_alpha=0.90),
-            roll=cls._adaptive_ema_axis(target.roll, previous.roll, delta_seconds, slow_alpha=0.42, fast_alpha=0.82),
-            x=cls._adaptive_ema_axis(target.x, previous.x, delta_seconds, slow_alpha=0.50, fast_alpha=0.86),
-            y=cls._adaptive_ema_axis(target.y, previous.y, delta_seconds, slow_alpha=0.50, fast_alpha=0.86),
-            z=cls._adaptive_ema_axis(target.z, previous.z, delta_seconds, slow_alpha=0.48, fast_alpha=0.84),
+            yaw=cls._adaptive_ema_axis(target.yaw, previous.yaw, delta_seconds, slow_alpha=0.62, fast_alpha=0.96),
+            pitch=cls._adaptive_ema_axis(target.pitch, previous.pitch, delta_seconds, slow_alpha=0.64, fast_alpha=0.96),
+            roll=cls._adaptive_ema_axis(target.roll, previous.roll, delta_seconds, slow_alpha=0.54, fast_alpha=0.90),
+            x=cls._adaptive_ema_axis(target.x, previous.x, delta_seconds, slow_alpha=0.62, fast_alpha=0.92),
+            y=cls._adaptive_ema_axis(target.y, previous.y, delta_seconds, slow_alpha=0.62, fast_alpha=0.92),
+            z=cls._adaptive_ema_axis(target.z, previous.z, delta_seconds, slow_alpha=0.60, fast_alpha=0.90),
         )
 
     @classmethod

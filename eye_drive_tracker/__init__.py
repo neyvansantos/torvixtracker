@@ -1,2 +1,2 @@
 __app_name__ = "Torvix Tracker"
-__version__ = "0.1.3"
+__version__ = "0.1.4"

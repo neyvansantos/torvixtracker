@@ -24,3 +24,10 @@ def test_profile_webcam_section_translation() -> None:
     assert translate("ENG", "User Profile/Webcam") == "User Profile/Webcam"
     assert translate("POR", "User Profile/Webcam") == "Perfil de Usuário/Webcam"
     assert translate("ESP", "User Profile/Webcam") == "Perfil de Usuario/Webcam"
+
+
+def test_motion_filter_translations() -> None:
+    assert translate("ENG", "Motion Filter") == "Motion Filter"
+    assert translate("POR", "Motion Filter") == "Filtros"
+    assert translate("ESP", "Motion Filter") == "Filtros"
+    assert "Nenhum código externo foi copiado" in translate("POR", "motion_filter_credit")

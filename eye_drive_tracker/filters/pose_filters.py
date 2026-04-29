@@ -11,7 +11,8 @@ from eye_drive_tracker.profiles.profile import TrackingConfig
 from eye_drive_tracker.tracking.models import GazeSample, PoseSample
 
 from .extended_view import clamp
-from .motion_stabilizer import MotionAxisStabilizer
+from .motion_stabilizer import AccelaVectorStabilizer, AxisStabilizerResult, MotionAxisStabilizer
+from .smart_motion import TorvixSmartMotionDebug, TorvixSmartMotionFilter
 
 
 @dataclass
@@ -91,6 +92,7 @@ class PipelineOutput:
     gaze_debug: GazeDebug = field(default_factory=GazeDebug)
     extended_debug: ExtendedViewDebug = field(default_factory=ExtendedViewDebug)
     stabilization_debug: OutputStabilizationDebug = field(default_factory=OutputStabilizationDebug)
+    motion_debug: TorvixSmartMotionDebug = field(default_factory=TorvixSmartMotionDebug)
 
 
 @dataclass
@@ -421,7 +423,7 @@ class PoseFilter:
     _OUTPUT_TRANSLATION_MAX_STEP_CM = 0.90
     _FINAL_STILL_FRAMES = 8
     _FINAL_SPIKE_MULTIPLIER = 2.5
-    _FINAL_STILL_RELEASE_FRAMES = 5
+    _FINAL_STILL_RELEASE_FRAMES = 2
     _FINAL_STILL_RELEASE_MULTIPLIER = 3.2
     _GAZE_CONFIDENCE_THRESHOLD = 0.18
     _GAZE_HOLD_FRAMES = 10
@@ -455,6 +457,8 @@ class PoseFilter:
         self._motion_yaw = MotionAxisStabilizer()
         self._motion_pitch = MotionAxisStabilizer()
         self._motion_roll = MotionAxisStabilizer()
+        self._motion_rotation = AccelaVectorStabilizer(3)
+        self.smart_motion_filter = TorvixSmartMotionFilter()
 
     def reset(self) -> None:
         self.center = PoseSample()
@@ -509,6 +513,8 @@ class PoseFilter:
         self._motion_yaw.reset()
         self._motion_pitch.reset()
         self._motion_roll.reset()
+        self._motion_rotation.reset()
+        self.smart_motion_filter.reset()
 
     def estimate_stable_center(self, raw_pose: PoseSample | None = None) -> PoseSample:
         if self._recenter_samples:
@@ -573,7 +579,10 @@ class PoseFilter:
             z=raw_pose.z - self.center.z,
         )
 
-        head = self._process_head(delta, config, delta_seconds)
+        smart_confidence = self._smart_motion_confidence(raw_gaze)
+        filtered_delta = self.smart_motion_filter.update(delta, delta_seconds, smart_confidence, config)
+
+        head = self._process_head(filtered_delta, config, delta_seconds)
         gaze, gaze_debug = self._process_gaze(head, raw_gaze, config, delta_seconds)
         extended, extended_debug = self._process_extended(head, config, delta_seconds)
         combined = self._combine_head_and_gaze(head, gaze, extended, gaze_debug, config, delta_seconds)
@@ -588,6 +597,7 @@ class PoseFilter:
             gaze_debug=gaze_debug,
             extended_debug=extended_debug,
             stabilization_debug=stabilization_debug,
+            motion_debug=self.smart_motion_filter.getDebugData(),
         )
 
     @staticmethod
@@ -771,6 +781,16 @@ class PoseFilter:
             user_distance=0.0 if raw_gaze is None else float(raw_gaze.distance_scale or 0.0),
             iris_lost=True,
         )
+
+    def _smart_motion_confidence(self, raw_gaze: GazeSample | None) -> float:
+        if raw_gaze is None:
+            return 1.0
+        face_confidence = self._face_confidence(raw_gaze)
+        if raw_gaze.source.startswith("iris"):
+            return self._tracking_confidence(face_confidence, raw_gaze.confidence, head_confidence=1.0)
+        if face_confidence <= 0.0 and raw_gaze.face_size_normalized <= 0.0:
+            return 1.0
+        return clamp(0.45 + (face_confidence * 0.55), 0.35, 1.0)
 
     def _process_iris_gaze(
         self,
@@ -1142,49 +1162,26 @@ class PoseFilter:
         pose: PoseSample,
         config: TrackingConfig,
         delta_seconds: float | None,
-    ) -> PoseSample:
+    ) -> tuple[PoseSample, OutputStabilizationDebug]:
+        if config.motion_filter_enabled:
+            self.previous_final = pose
+            self._has_final_previous = True
+            return pose, self._smart_motion_stabilization_debug()
+
         if not self._has_final_previous:
             self.previous_final = pose
             self._has_final_previous = True
             self._motion_yaw.initialize(pose.yaw)
             self._motion_pitch.initialize(pose.pitch)
             self._motion_roll.initialize(pose.roll)
+            self._motion_rotation.initialize((pose.yaw, pose.pitch, pose.roll))
             return pose, OutputStabilizationDebug(
                 yaw=FinalAxisDebug(raw=pose.yaw, previous=pose.yaw, prefiltered=pose.yaw, filtered=pose.yaw),
                 pitch=FinalAxisDebug(raw=pose.pitch, previous=pose.pitch, prefiltered=pose.pitch, filtered=pose.pitch),
                 roll=FinalAxisDebug(raw=pose.roll, previous=pose.roll, prefiltered=pose.roll, filtered=pose.roll),
             )
 
-        yaw, yaw_debug = self._stabilize_final_axis(
-            pose.yaw,
-            config,
-            delta_seconds,
-            threshold_scale=1.18,
-            threshold_floor=0.10,
-            axis=self._motion_yaw,
-            confidence=self._tracking_confidence_for_output(),
-            distance_stability=self._distance_stability_for_output(),
-        )
-        pitch, pitch_debug = self._stabilize_final_axis(
-            pose.pitch,
-            config,
-            delta_seconds,
-            threshold_scale=1.9,
-            threshold_floor=0.20,
-            axis=self._motion_pitch,
-            confidence=self._tracking_confidence_for_output(),
-            distance_stability=self._distance_stability_for_output(),
-        )
-        roll, roll_debug = self._stabilize_final_axis(
-            pose.roll,
-            config,
-            delta_seconds,
-            threshold_scale=1.28,
-            threshold_floor=0.12,
-            axis=self._motion_roll,
-            confidence=max(0.7, self._tracking_confidence_for_output()),
-            distance_stability=self._distance_stability_for_output(),
-        )
+        yaw, pitch, roll, rotation_debug = self._stabilize_rotation_axes(pose, config, delta_seconds)
 
         stabilized = PoseSample(
             yaw=yaw,
@@ -1195,7 +1192,73 @@ class PoseFilter:
             z=self._stabilize_translation_axis(pose.z, self.previous_final.z, config, delta_seconds),
         )
         self.previous_final = stabilized
-        return stabilized, OutputStabilizationDebug(yaw=yaw_debug, pitch=pitch_debug, roll=roll_debug)
+        return stabilized, rotation_debug
+
+    def _smart_motion_stabilization_debug(self) -> OutputStabilizationDebug:
+        debug = self.smart_motion_filter.getDebugData()
+
+        def axis(index: int) -> FinalAxisDebug:
+            if index >= len(debug.axes):
+                return FinalAxisDebug()
+            source = debug.axes[index]
+            return FinalAxisDebug(
+                state=debug.state.upper().replace(" ", "_"),
+                raw=source.raw,
+                previous=source.filtered - source.delta,
+                prefiltered=source.raw,
+                filtered=source.filtered,
+                delta=source.delta,
+                threshold=source.deadzone,
+                alpha=source.alpha,
+                still_frames=0,
+                jitter_detected=source.held or debug.state == "Still",
+                spike_rejected=False,
+            )
+
+        return OutputStabilizationDebug(yaw=axis(3), pitch=axis(4), roll=axis(5))
+
+    def _stabilize_rotation_axes(
+        self,
+        pose: PoseSample,
+        config: TrackingConfig,
+        delta_seconds: float | None,
+    ) -> tuple[float, float, float, OutputStabilizationDebug]:
+        previous = self._motion_rotation.filtered.copy()
+        results = self._motion_rotation.update(
+            (pose.yaw, pose.pitch, pose.roll),
+            delta_seconds,
+            micro_jitter=config.output_micro_jitter,
+            smoothing=config.output_smoothing,
+            max_step=config.output_max_step,
+            threshold_scales=(1.18, 1.9, 1.28),
+            threshold_floors=(0.10, 0.20, 0.12),
+            confidence=max(0.7, self._tracking_confidence_for_output()),
+            distance_stability=self._distance_stability_for_output(),
+            still_frames_required=self._FINAL_STILL_FRAMES,
+            spike_multiplier=self._FINAL_SPIKE_MULTIPLIER,
+        )
+        debug = OutputStabilizationDebug(
+            yaw=self._final_axis_debug(results[0], previous[0]),
+            pitch=self._final_axis_debug(results[1], previous[1]),
+            roll=self._final_axis_debug(results[2], previous[2]),
+        )
+        return results[0].value, results[1].value, results[2].value, debug
+
+    @staticmethod
+    def _final_axis_debug(result: AxisStabilizerResult, previous: float) -> FinalAxisDebug:
+        return FinalAxisDebug(
+            state=result.state,
+            raw=result.raw,
+            previous=previous,
+            prefiltered=result.prefiltered,
+            filtered=result.value,
+            delta=result.raw - previous,
+            threshold=result.threshold,
+            alpha=result.alpha,
+            still_frames=result.still_frames,
+            jitter_detected=result.jitter_detected,
+            spike_rejected=result.spike_rejected,
+        )
 
     def _stabilize_final_axis(
         self,
@@ -1218,8 +1281,8 @@ class PoseFilter:
             max_step=config.output_max_step,
             threshold_scale=threshold_scale,
             threshold_floor=threshold_floor,
-            alpha_still=0.08,
-            alpha_moving=0.82,
+            alpha_still=0.12,
+            alpha_moving=0.92,
             confidence=confidence,
             distance_stability=distance_stability,
             still_frames_required=self._FINAL_STILL_FRAMES,

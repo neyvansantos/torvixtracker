@@ -2,6 +2,7 @@ import json
 import urllib.request
 from PySide6.QtCore import QThread, Signal
 
+
 class UpdateChecker(QThread):
     """
     Thread para verificar atualizações sem travar a UI.
@@ -19,14 +20,15 @@ class UpdateChecker(QThread):
             with urllib.request.urlopen(self.update_url, timeout=10) as response:
                 data = json.loads(response.read().decode())
                 
-                latest_version = data.get("version", "0.0.0")
+                latest_version = str(data.get("version", "0.0.0")).strip()
                 has_update = self._is_newer(latest_version, self.current_version)
-                
+                download_url = str(data.get("download_url", "")).strip()
+
                 result = {
                     "success": True,
                     "has_update": has_update,
                     "latest_version": latest_version,
-                    "download_url": data.get("download_url", ""),
+                    "download_url": download_url,
                     "changelog": data.get("changelog", "")
                 }
         except Exception as e:

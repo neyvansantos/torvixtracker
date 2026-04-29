@@ -32,11 +32,13 @@ def update_version_json(new_version, changelog):
     
     data['version'] = new_version
     data['changelog'] = changelog
+    data['download_url'] = ""
     
     with open(json_path, 'w', encoding='utf-8') as f:
         json.dump(data, f, indent=2, ensure_ascii=False)
     
     print(f"[OK] version.json atualizado para {new_version}")
+    print("[AVISO] download_url foi limpo. Publique um arquivo e atualize o version.json com o link direto do instalador.")
     return True
 
 def run_build():

@@ -55,7 +55,47 @@ def test_stabilize_pose_limits_single_frame_yaw_jump() -> None:
 
     stabilized = tracker._stabilize_pose(PoseSample(yaw=17.0))
 
-    assert stabilized.yaw == pytest.approx(8.0)
+    assert stabilized.yaw == pytest.approx(11.0)
+
+
+def test_stabilize_pose_holds_raw_yaw_when_stationary_jitter_continues() -> None:
+    tracker = HeadPoseTracker.__new__(HeadPoseTracker)
+    tracker._last_pose = PoseSample()
+    tracker._has_last_pose = True
+    tracker._last_pose_timestamp = time.monotonic()
+    tracker._pose_ema_enabled = False
+    tracker._reset_pose_stillness(PoseSample())
+
+    outputs = []
+    for yaw in (0.24, -0.18, 0.29, -0.20, 0.19, -0.16, 0.22):
+        tracker._last_pose_timestamp = time.monotonic() - (1.0 / 60.0)
+        outputs.append(tracker._stabilize_pose(PoseSample(yaw=yaw)).yaw)
+
+    assert tracker._pose_stillness_yaw.locked is True
+    assert outputs[-1] == pytest.approx(outputs[-2])
+
+
+def test_stabilize_pose_releases_after_sustained_real_yaw_movement() -> None:
+    tracker = HeadPoseTracker.__new__(HeadPoseTracker)
+    tracker._last_pose = PoseSample()
+    tracker._has_last_pose = True
+    tracker._last_pose_timestamp = time.monotonic()
+    tracker._pose_ema_enabled = False
+    tracker._reset_pose_stillness(PoseSample())
+
+    for yaw in (0.24, -0.18, 0.29, -0.20, 0.19):
+        tracker._last_pose_timestamp = time.monotonic() - (1.0 / 60.0)
+        tracker._stabilize_pose(PoseSample(yaw=yaw))
+
+    held = tracker._stabilize_pose(PoseSample(yaw=2.0))
+    tracker._last_pose_timestamp = time.monotonic() - (1.0 / 60.0)
+    tracker._stabilize_pose(PoseSample(yaw=2.0))
+    tracker._last_pose_timestamp = time.monotonic() - (1.0 / 60.0)
+    released = tracker._stabilize_pose(PoseSample(yaw=2.0))
+
+    assert held.yaw == pytest.approx(2.0)
+    assert released.yaw == pytest.approx(2.0)
+    assert tracker._pose_stillness_yaw.locked is False
 
 
 def test_short_detection_loss_keeps_last_pose_for_reacquisition_ramp() -> None:

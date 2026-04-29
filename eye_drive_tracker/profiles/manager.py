@@ -6,6 +6,7 @@ from pathlib import Path
 from eye_drive_tracker import __app_name__, __version__
 
 from .profile import TrackingConfig
+from .viewtracker import import_viewtracker_ini
 
 
 class ProfileManager:
@@ -39,3 +40,6 @@ class ProfileManager:
             data.setdefault("profile_name", payload.get("name", Path(path).stem))
             return TrackingConfig.from_dict(data)
         return TrackingConfig.from_dict(payload)
+
+    def import_viewtracker_ini(self, path: str | Path, base_config: TrackingConfig | None = None) -> TrackingConfig:
+        return import_viewtracker_ini(path, base_config)

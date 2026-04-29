@@ -17,6 +17,15 @@ from .pose_filters import (
     combineHeadAndGaze,
     normalizeInput,
 )
+from .smart_motion import (
+    EULER_CLASSIC,
+    QUATERNION_HAMILTON,
+    SMART_MOTION_PRESET_LABELS,
+    SMART_MOTION_PRESETS,
+    TorvixSmartMotionDebug,
+    TorvixSmartMotionFilter,
+    apply_smart_motion_preset,
+)
 
 __all__ = [
     "PipelineOutput",
@@ -37,4 +46,11 @@ __all__ = [
     "normalizeInput",
     "extended_view_curve",
     "curve_points",
+    "EULER_CLASSIC",
+    "QUATERNION_HAMILTON",
+    "SMART_MOTION_PRESET_LABELS",
+    "SMART_MOTION_PRESETS",
+    "TorvixSmartMotionDebug",
+    "TorvixSmartMotionFilter",
+    "apply_smart_motion_preset",
 ]

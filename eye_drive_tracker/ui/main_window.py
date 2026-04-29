@@ -7,6 +7,7 @@ import sys
 import time
 from ctypes import wintypes
 from pathlib import Path
+from urllib.parse import urlparse
 
 import cv2
 from PySide6.QtCore import QObject, QEvent, QEasingCurve, QPropertyAnimation, QRect, QTimer, Qt, Signal
@@ -35,7 +36,14 @@ from PySide6.QtWidgets import (
 
 from eye_drive_tracker import __app_name__, __version__
 from eye_drive_tracker.camera import CameraDevice, CameraEnumerator, Webcam
-from eye_drive_tracker.filters import PipelineOutput, PoseFilter
+from eye_drive_tracker.filters import (
+    EULER_CLASSIC,
+    QUATERNION_HAMILTON,
+    SMART_MOTION_PRESET_LABELS,
+    PipelineOutput,
+    PoseFilter,
+    apply_smart_motion_preset,
+)
 from eye_drive_tracker.output import OUTPUT_MODE_LABELS, OutputManager
 from eye_drive_tracker.profiles import ProfileManager, TrackingConfig
 from eye_drive_tracker.tracking import AsyncHeadPoseWorker, GazeSample, PoseSample, TrackingResult
@@ -100,9 +108,37 @@ HELP_KEYS = {
     "output_smoothing": "help_output_smoothing",
     "output_micro_jitter": "help_output_micro_jitter",
     "output_max_step": "help_output_max_step",
+    "motion_filter_enabled": "help_motion_filter_enabled",
+    "motion_rotation_enabled": "help_motion_rotation_enabled",
+    "motion_position_enabled": "help_motion_position_enabled",
+    "motion_rotation_mode": "help_motion_rotation_mode",
+    "motion_rotation_smoothing": "help_motion_rotation_smoothing",
+    "motion_rotation_deadzone": "help_motion_rotation_deadzone",
+    "motion_rotation_responsiveness": "help_motion_rotation_responsiveness",
+    "motion_rotation_snap_threshold": "help_motion_rotation_snap_threshold",
+    "motion_position_smoothing": "help_motion_position_smoothing",
+    "motion_position_deadzone": "help_motion_position_deadzone",
+    "motion_position_responsiveness": "help_motion_position_responsiveness",
+    "motion_position_snap_threshold": "help_motion_position_snap_threshold",
+    "motion_zoom_smoothing_enabled": "help_motion_zoom_smoothing_enabled",
+    "motion_max_zoomed_smoothing": "help_motion_max_zoomed_smoothing",
+    "motion_max_z": "help_motion_max_z",
+    "motion_confidence_smoothing_enabled": "help_motion_confidence_smoothing_enabled",
+    "motion_max_confidence_smoothing_boost": "help_motion_max_confidence_smoothing_boost",
+    "motion_stillness_detection_enabled": "help_motion_stillness_detection_enabled",
+    "motion_stillness_smoothing_boost": "help_motion_stillness_smoothing_boost",
+    "motion_stillness_deadzone_boost": "help_motion_stillness_deadzone_boost",
+    "motion_snap_enabled": "help_motion_snap_enabled",
+    "motion_snap_alpha": "help_motion_snap_alpha",
+    "motion_debug_enabled": "help_motion_debug_enabled",
     "recenter_hotkey": "help_recenter_hotkey",
     "output_mode": "help_output_mode",
     "connection_status": "help_connection_status",
+}
+
+GENERIC_RELEASE_PATHS = {
+    "/NeyvanSantos/TorvixTracker/releases",
+    "/NeyvanSantos/TorvixTracker/releases/latest",
 }
 
 
@@ -1038,6 +1074,8 @@ class MainWindow(QMainWindow):
         self._preview_fps = 0.0
         self._last_preview_presented_at = 0.0
         self._last_camera_frame_id = 0
+        self._lost_tracking_frames = 0
+        self._lost_tracking_reset_done = False
         self._syncing_controls = False
 
         # Rastreamento da area do rosto para estimar profundidade no mascote
@@ -1050,10 +1088,7 @@ class MainWindow(QMainWindow):
         self.timer.setInterval(5)
         self.timer.timeout.connect(self._on_frame)
 
-        self.output_timer = QTimer(self)
-        self.output_timer.setTimerType(Qt.PreciseTimer)
-        self.output_timer.setInterval(8)
-        self.output_timer.timeout.connect(self._on_output_tick)
+
 
         self.controls: dict[str, FloatSlider] = {}
         self.check_boxes: dict[str, QCheckBox] = {}
@@ -1062,6 +1097,7 @@ class MainWindow(QMainWindow):
         self._language_buttons: dict[str, QPushButton] = {}
         self._language_button_group: QButtonGroup | None = None
         self._debug_extended_widgets: list[QWidget] = []
+        self._motion_debug_widgets: list[QWidget] = []
         self.output_mascot_pixmap: QPixmap | None = None
         self.output_mascot_pose = PoseSample()
         self.recenter_shortcut: QShortcut | None = None
@@ -1096,11 +1132,15 @@ class MainWindow(QMainWindow):
         self.file_menu = self.menuBar().addMenu(self._tr("File"))
         load_action = QAction(self._tr("Load Profile"), self)
         load_action.triggered.connect(self._load_profile)
+        import_viewtracker_action = QAction(self._tr("Import ViewTracker/OpenTrack INI"), self)
+        import_viewtracker_action.triggered.connect(self._import_viewtracker_profile)
         save_action = QAction(self._tr("Save Profile"), self)
         save_action.triggered.connect(self._save_profile)
         self.file_menu.addAction(load_action)
+        self.file_menu.addAction(import_viewtracker_action)
         self.file_menu.addAction(save_action)
         self._menu_actions["Load Profile"] = load_action
+        self._menu_actions["Import ViewTracker/OpenTrack INI"] = import_viewtracker_action
         self._menu_actions["Save Profile"] = save_action
 
         self.help_menu = self.menuBar().addMenu(self._tr("Help"))
@@ -1468,6 +1508,7 @@ class MainWindow(QMainWindow):
         self.sec_gaze = self._localize(CollapsibleSection(""), "Iris Settings", "setTitle")
         self.sec_extended = self._localize(CollapsibleSection(""), "Extended View Settings", "setTitle")
         self.sec_stabilization = self._localize(CollapsibleSection(""), "Sensitivity & Curves", "setTitle")
+        self.sec_motion_filter = self._localize(CollapsibleSection(""), "Motion Filter", "setTitle")
         self.sec_calibration = self._localize(CollapsibleSection(""), "Focus Settings", "setTitle")
         self.sec_output = self._localize(CollapsibleSection(""), "Track", "setTitle")
 
@@ -1478,6 +1519,7 @@ class MainWindow(QMainWindow):
         self.sec_gaze.addLayout(self._build_gaze_content())
         self.sec_extended.addLayout(self._build_extended_content())
         self.sec_stabilization.addLayout(self._build_stabilization_content())
+        self.sec_motion_filter.addLayout(self._build_motion_filter_content())
         self.sec_calibration.addLayout(self._build_calibration_content())
         self.sec_output.addLayout(self._build_output_content())
 
@@ -1487,6 +1529,7 @@ class MainWindow(QMainWindow):
         layout.addWidget(self.sec_gaze)
         layout.addWidget(self.sec_extended)
         layout.addWidget(self.sec_stabilization)
+        layout.addWidget(self.sec_motion_filter)
         layout.addWidget(self.sec_calibration)
         layout.addWidget(self.sec_output)
         layout.addStretch(1)
@@ -1615,6 +1658,93 @@ class MainWindow(QMainWindow):
         self._add_slider(layout, "output_smoothing", "Output smoothing", 0.0, 1.0, 2, 0.01)
         self._add_slider(layout, "output_micro_jitter", "Micro jitter threshold", 0.0, 5.0, 2, 0.01)
         self._add_slider(layout, "output_max_step", "Max output step per frame", 0.0, 30.0, 2, 0.1)
+        return layout
+
+    def _build_motion_filter_content(self) -> QVBoxLayout:
+        layout = QVBoxLayout()
+        layout.setContentsMargins(8, 6, 8, 4)
+        layout.setSpacing(10)
+
+        status_layout = QGridLayout()
+        status_layout.setHorizontalSpacing(12)
+        status_layout.setVerticalSpacing(6)
+        self.motion_enabled_label = QLabel("--")
+        self.motion_mode_label = QLabel("--")
+        self.motion_fps_label = QLabel("--")
+        self.motion_confidence_label = QLabel("--")
+        self.motion_state_label = QLabel("--")
+        status_layout.addWidget(self._label("Filter"), 0, 0)
+        status_layout.addWidget(self.motion_enabled_label, 0, 1)
+        status_layout.addWidget(self._label("Mode"), 0, 2)
+        status_layout.addWidget(self.motion_mode_label, 0, 3)
+        status_layout.addWidget(self._label("FPS"), 1, 0)
+        status_layout.addWidget(self.motion_fps_label, 1, 1)
+        status_layout.addWidget(self._label("Confidence"), 1, 2)
+        status_layout.addWidget(self.motion_confidence_label, 1, 3)
+        status_layout.addWidget(self._label("State"), 2, 0)
+        status_layout.addWidget(self.motion_state_label, 2, 1, 1, 3)
+        layout.addLayout(status_layout)
+
+        preset_row = QHBoxLayout()
+        preset_row.addWidget(self._label("Preset"))
+        self.motion_preset_combo = QComboBox()
+        self._populate_motion_preset_combo()
+        self.motion_preset_combo.currentIndexChanged.connect(self._on_motion_filter_preset_changed)
+        preset_row.addWidget(self.motion_preset_combo, 1)
+        layout.addLayout(preset_row)
+
+        self._add_check(layout, "motion_filter_enabled", "Enable Motion Filter")
+
+        rotation_box = self._group("Rotation Filter")
+        rotation_layout = QVBoxLayout(rotation_box)
+        self._add_check(rotation_layout, "motion_rotation_enabled", "Enable Rotation Filter")
+        self._add_slider(rotation_layout, "motion_rotation_smoothing", "Rotation smoothing", 0.05, 2.5, 2, 0.01)
+        self._add_slider(rotation_layout, "motion_rotation_deadzone", "Rotation deadzone", 0.0, 0.2, 3, 0.001)
+        self._add_slider(rotation_layout, "motion_rotation_responsiveness", "Rotation responsiveness", 0.0, 2.0, 2, 0.01)
+        self._add_slider(rotation_layout, "motion_rotation_snap_threshold", "Rotation snap threshold", 0.0, 30.0, 2, 0.1)
+        layout.addWidget(rotation_box)
+
+        position_box = self._group("Position Filter")
+        position_layout = QVBoxLayout(position_box)
+        self._add_check(position_layout, "motion_position_enabled", "Enable Position Filter")
+        self._add_slider(position_layout, "motion_position_smoothing", "Position smoothing", 0.05, 1.5, 2, 0.01)
+        self._add_slider(position_layout, "motion_position_deadzone", "Position deadzone", 0.0, 1.0, 2, 0.01)
+        self._add_slider(position_layout, "motion_position_responsiveness", "Position responsiveness", 0.0, 2.0, 2, 0.01)
+        self._add_slider(position_layout, "motion_position_snap_threshold", "Position snap threshold", 0.0, 40.0, 2, 0.1)
+        layout.addWidget(position_box)
+
+        advanced_box = self._group("Advanced")
+        advanced_layout = QVBoxLayout(advanced_box)
+        mode_row = QHBoxLayout()
+        mode_row.addWidget(self._label("Rotation Mode"))
+        self.motion_rotation_mode_combo = QComboBox()
+        self._populate_motion_rotation_mode_combo()
+        self.motion_rotation_mode_combo.currentIndexChanged.connect(self._on_motion_rotation_mode_changed)
+        mode_row.addWidget(self.motion_rotation_mode_combo, 1)
+        advanced_layout.addLayout(mode_row)
+        self._add_check(advanced_layout, "motion_zoom_smoothing_enabled", "Zoom smoothing")
+        self._add_slider(advanced_layout, "motion_max_zoomed_smoothing", "Max added smoothing", 0.0, 10.0, 2, 0.1)
+        self._add_slider(advanced_layout, "motion_max_z", "Max Z", 10.0, 30.0, 1, 0.5)
+        self._add_check(advanced_layout, "motion_confidence_smoothing_enabled", "Confidence-aware smoothing")
+        self._add_slider(advanced_layout, "motion_max_confidence_smoothing_boost", "Confidence smoothing boost", 1.0, 4.0, 2, 0.05)
+        self._add_check(advanced_layout, "motion_stillness_detection_enabled", "Anti-jitter when still")
+        self._add_slider(advanced_layout, "motion_stillness_smoothing_boost", "Stillness smoothing boost", 1.0, 3.0, 2, 0.05)
+        self._add_slider(advanced_layout, "motion_stillness_deadzone_boost", "Stillness deadzone boost", 1.0, 2.5, 2, 0.05)
+        self._add_check(advanced_layout, "motion_snap_enabled", "Controlled snap")
+        self._add_slider(advanced_layout, "motion_snap_alpha", "Snap alpha", 0.0, 1.0, 2, 0.01)
+        self._add_check(advanced_layout, "motion_debug_enabled", "Debug logs")
+        layout.addWidget(advanced_box)
+
+        self.motion_debug_label = QLabel("")
+        self.motion_debug_label.setWordWrap(True)
+        self.motion_debug_label.setObjectName("motionDebugLabel")
+        self._motion_debug_widgets.append(self.motion_debug_label)
+        layout.addWidget(self.motion_debug_label)
+
+        credit = self._localize(QLabel(), "motion_filter_credit")
+        credit.setWordWrap(True)
+        credit.setStyleSheet("color: #777; font-size: 10px;")
+        layout.addWidget(credit)
         return layout
 
     def _build_calibration_content(self) -> QGridLayout:
@@ -2192,6 +2322,8 @@ class MainWindow(QMainWindow):
         self.last_raw_pose = None
         self.last_pipeline = PipelineOutput(PoseSample(), PoseSample(), PoseSample(), PoseSample())
         self.last_tracking_result = TrackingResult(detected=False)
+        self._lost_tracking_frames = 0
+        self._lost_tracking_reset_done = False
         self._mascot_face_area_ref = 0.0
         self._mascot_face_area_current = 0.0
         self._set_output_mascot_pose(None)
@@ -2199,7 +2331,6 @@ class MainWindow(QMainWindow):
         self.tracking_worker.start()
         self.output_manager.set_mode(self.config.output_mode)
         self.output_manager.start()
-        self.output_timer.start()
         self.timer.start()
         self.start_button.setEnabled(False)
         self.stop_button.setEnabled(True)
@@ -2210,13 +2341,15 @@ class MainWindow(QMainWindow):
     def _stop_tracking(self) -> None:
         self.timer.stop()
         self.timer.setInterval(5)
-        self.output_timer.stop()
         self.tracking_worker.stop()
         self.camera.release()
         self.output_manager.stop()
+        self.pose_filter.reset()
         self.last_raw_pose = None
         self.last_pipeline = PipelineOutput(PoseSample(), PoseSample(), PoseSample(), PoseSample())
         self.last_tracking_result = TrackingResult(detected=False)
+        self._lost_tracking_frames = 0
+        self._lost_tracking_reset_done = False
         if hasattr(self, "start_button"):
             self.start_button.setEnabled(True)
             self.stop_button.setEnabled(False)
@@ -2385,6 +2518,8 @@ class MainWindow(QMainWindow):
 
     def _handle_tracking_result(self, result: TrackingResult) -> None:
         if result.detected:
+            self._lost_tracking_frames = 0
+            self._lost_tracking_reset_done = False
             self.last_raw_pose = result.pose
 
             # Alimenta o assistente de calibracao se estiver aberto
@@ -2417,18 +2552,18 @@ class MainWindow(QMainWindow):
             self._set_output_mascot_pose(self.last_pipeline.final)
             self._update_output_status()
         else:
+            self._lost_tracking_frames += 1
+            if self._lost_tracking_frames >= 30 and not self._lost_tracking_reset_done:
+                self.pose_filter.reset()
+                self.last_raw_pose = None
+                self._lost_tracking_reset_done = True
             self.status_label.setText(self._tr("No face"))
             self._update_output_status()
 
     def _on_output_tick(self) -> None:
-        if not self.output_manager.running:
-            return
-        if not self.camera.is_open:
-            return
-        previous_status = self.output_manager.status
-        self.output_manager.tick()
-        if self.output_manager.status != previous_status:
-            self._update_output_status()
+        # Output is now fully handled by OutputManager's internal thread.
+        # This method is kept only for backward compatibility.
+        pass
 
     def _tracking_frame_for_detection(self, frame):
         height, width = frame.shape[:2]
@@ -2693,6 +2828,7 @@ class MainWindow(QMainWindow):
         self._set_pose_labels(pipeline.extended, self.extended_yaw_label, self.extended_pitch_label, None)
         self._set_pose_labels(pipeline.final, self.final_yaw_label, self.final_pitch_label, self.final_roll_label)
         self._update_extended_debug_labels(pipeline)
+        self._update_motion_filter_labels(pipeline)
 
     def _set_pose_labels(
         self,
@@ -2725,6 +2861,35 @@ class MainWindow(QMainWindow):
         for widget in self._debug_extended_widgets:
             widget.setVisible(visible)
 
+    def _update_motion_filter_labels(self, pipeline: PipelineOutput) -> None:
+        if not hasattr(self, "motion_enabled_label"):
+            return
+        debug = pipeline.motion_debug
+        self.motion_enabled_label.setText(self._tr("Active") if debug.enabled else self._tr("Disabled"))
+        self.motion_mode_label.setText(debug.rotation_mode)
+        self.motion_fps_label.setText(f"{debug.fps:.1f}")
+        self.motion_confidence_label.setText(f"{debug.confidence:.2f}")
+        self.motion_state_label.setText(self._tr(debug.state))
+        if hasattr(self, "motion_debug_label"):
+            self.motion_debug_label.setText(
+                "raw yaw/pitch/roll: "
+                f"{debug.axes[3].raw:.2f} / {debug.axes[4].raw:.2f} / {debug.axes[5].raw:.2f}\n"
+                "filtered yaw/pitch/roll: "
+                f"{debug.axes[3].filtered:.2f} / {debug.axes[4].filtered:.2f} / {debug.axes[5].filtered:.2f}\n"
+                f"delta: {debug.axes[3].delta:.3f} / {debug.axes[4].delta:.3f} / {debug.axes[5].delta:.3f} | "
+                f"gain: rot {debug.rotation_gain:.2f} pos {debug.position_gain:.2f}\n"
+                f"smoothing: rot {debug.rotation_smoothing:.2f} pos {debug.position_smoothing:.2f} | "
+                f"deadzone: rot {debug.rotation_deadzone:.3f} pos {debug.position_deadzone:.3f}\n"
+                f"dt: {debug.delta_time:.4f}s | zoom +{debug.zoom_extra_smoothing:.2f} | "
+                f"confidence +{debug.confidence_smoothing_boost:.2f} | still +{debug.stillness_boost:.2f} | "
+                f"snap: {debug.snap_active}"
+            )
+
+    def _update_motion_debug_visibility(self) -> None:
+        visible = bool(getattr(self.config, "motion_debug_enabled", False))
+        for widget in self._motion_debug_widgets:
+            widget.setVisible(visible)
+
     def _update_output_status(self) -> None:
         status = self.output_manager.status
         if hasattr(self, "output_connection_label"):
@@ -2749,6 +2914,28 @@ class MainWindow(QMainWindow):
             self.output_mode_combo.addItem(self._tr(label), mode.value)
         self._set_combo_by_data(self.output_mode_combo, current or self.config.output_mode)
         self.output_mode_combo.blockSignals(False)
+
+    def _populate_motion_preset_combo(self) -> None:
+        current = self.motion_preset_combo.currentData() if self.motion_preset_combo.count() else self.config.motion_filter_preset
+        self.motion_preset_combo.blockSignals(True)
+        self.motion_preset_combo.clear()
+        for preset, label in SMART_MOTION_PRESET_LABELS.items():
+            self.motion_preset_combo.addItem(self._tr(label), preset)
+        self._set_combo_by_data(self.motion_preset_combo, current or self.config.motion_filter_preset)
+        self.motion_preset_combo.blockSignals(False)
+
+    def _populate_motion_rotation_mode_combo(self) -> None:
+        current = (
+            self.motion_rotation_mode_combo.currentData()
+            if self.motion_rotation_mode_combo.count()
+            else self.config.motion_rotation_mode
+        )
+        self.motion_rotation_mode_combo.blockSignals(True)
+        self.motion_rotation_mode_combo.clear()
+        self.motion_rotation_mode_combo.addItem(self._tr("Quaternion Hamilton"), QUATERNION_HAMILTON)
+        self.motion_rotation_mode_combo.addItem(self._tr("Euler Classic"), EULER_CLASSIC)
+        self._set_combo_by_data(self.motion_rotation_mode_combo, current or self.config.motion_rotation_mode)
+        self.motion_rotation_mode_combo.blockSignals(False)
 
     def _populate_camera_combo(self) -> None:
         current = self.config.camera_index
@@ -2793,6 +2980,10 @@ class MainWindow(QMainWindow):
             self._populate_context_combo()
         if hasattr(self, "output_mode_combo"):
             self._populate_output_mode_combo()
+        if hasattr(self, "motion_preset_combo"):
+            self._populate_motion_preset_combo()
+        if hasattr(self, "motion_rotation_mode_combo"):
+            self._populate_motion_rotation_mode_combo()
         if hasattr(self, "camera_combo"):
             self._populate_camera_combo()
         if hasattr(self, "calibration_status_label"):
@@ -2803,13 +2994,17 @@ class MainWindow(QMainWindow):
         if self._syncing_controls:
             return
         setattr(self.config, name, value)
+        self._mark_motion_preset_custom(name)
 
     def _on_check_changed(self, name: str, checked: bool) -> None:
         if self._syncing_controls:
             return
         setattr(self.config, name, bool(checked))
+        self._mark_motion_preset_custom(name)
         if name == "debug_extended_view":
             self._update_debug_extended_visibility()
+        if name == "motion_debug_enabled":
+            self._update_motion_debug_visibility()
 
     def _on_context_changed(self, _index: int = -1) -> None:
         if self._syncing_controls:
@@ -2823,6 +3018,31 @@ class MainWindow(QMainWindow):
         self.output_manager.set_mode(self.config.output_mode)
         self._update_output_status()
 
+    def _on_motion_filter_preset_changed(self, _index: int = -1) -> None:
+        if self._syncing_controls:
+            return
+        preset = self.motion_preset_combo.currentData()
+        if not preset:
+            return
+        if preset != "custom":
+            apply_smart_motion_preset(self.config, preset)
+            self._sync_controls_from_config()
+        else:
+            self.config.motion_filter_preset = "custom"
+
+    def _on_motion_rotation_mode_changed(self, _index: int = -1) -> None:
+        if self._syncing_controls:
+            return
+        self.config.motion_rotation_mode = self.motion_rotation_mode_combo.currentData() or QUATERNION_HAMILTON
+        self._mark_motion_preset_custom("motion_rotation_mode")
+
+    def _mark_motion_preset_custom(self, field: str) -> None:
+        if not field.startswith("motion_") or field in {"motion_filter_preset", "motion_debug_enabled"}:
+            return
+        self.config.motion_filter_preset = "custom"
+        if hasattr(self, "motion_preset_combo"):
+            self._set_combo_by_data(self.motion_preset_combo, "custom")
+
     def _on_profile_name_changed(self, value: str) -> None:
         if self._syncing_controls:
             return
@@ -2835,6 +3055,7 @@ class MainWindow(QMainWindow):
         if value is None:
             return
         self.config.camera_index = int(value)
+        self.pose_filter.reset()
 
     def _open_camera_settings(self) -> None:
         was_running = self.camera.is_open
@@ -2886,6 +3107,10 @@ class MainWindow(QMainWindow):
             self.hotkey_edit.set_hotkey(self.config.recenter_hotkey)
             self._set_combo_by_data(self.context_combo, self.config.tracking_context)
             self._set_combo_by_data(self.output_mode_combo, self.config.output_mode)
+            if hasattr(self, "motion_preset_combo"):
+                self._set_combo_by_data(self.motion_preset_combo, self.config.motion_filter_preset)
+            if hasattr(self, "motion_rotation_mode_combo"):
+                self._set_combo_by_data(self.motion_rotation_mode_combo, self.config.motion_rotation_mode)
             for field, control in self.controls.items():
                 control.set_value(getattr(self.config, field))
             for field, box in self.check_boxes.items():
@@ -2895,6 +3120,7 @@ class MainWindow(QMainWindow):
             self._update_output_status()
             self._apply_language()
             self._update_debug_extended_visibility()
+            self._update_motion_debug_visibility()
         finally:
             self._syncing_controls = False
         self._update_recenter_shortcut()
@@ -2958,6 +3184,24 @@ class MainWindow(QMainWindow):
             self._sync_controls_from_config()
         except Exception as exc:
             QMessageBox.warning(self, __app_name__, f"{self._tr('Could not load profile')}:\n{exc}")
+
+    def _import_viewtracker_profile(self) -> None:
+        path, _selected = QFileDialog.getOpenFileName(
+            self,
+            self._tr("Import ViewTracker/OpenTrack INI"),
+            str(Path.home()),
+            "ViewTracker/OpenTrack profile (*.ini)",
+        )
+        if not path:
+            return
+        try:
+            self.config = self.profile_manager.import_viewtracker_ini(Path(path), self.config)
+            self.output_manager.set_mode(self.config.output_mode)
+            self.pose_filter.reset()
+            self._sync_controls_from_config()
+            QMessageBox.information(self, __app_name__, self._tr("ViewTracker/OpenTrack profile imported"))
+        except Exception as exc:
+            QMessageBox.warning(self, __app_name__, f"{self._tr('Could not import ViewTracker/OpenTrack profile')}:\n{exc}")
 
     def _open_auto_calibrate(self):
         is_active = self.camera.is_open
@@ -3076,7 +3320,7 @@ class MainWindow(QMainWindow):
 
         if result.get("has_update"):
             latest = result.get("latest_version")
-            download_url = result.get("download_url")
+            download_url = self._resolve_update_download_url(result.get("download_url"))
             changelog = result.get("changelog")
 
             msg = f"<h3>{self._tr('New version available!')}</h3>"
@@ -3085,6 +3329,8 @@ class MainWindow(QMainWindow):
             
             if changelog:
                 msg += f"<p><b>{self._tr('What\'s new')}:</b><br>{changelog}</p>"
+            if not download_url:
+                msg += f"<p>{self._tr('This update does not have a published download yet.')}</p>"
 
             dialog = QMessageBox(self)
             dialog.setWindowTitle(self._tr("Check for Updates"))
@@ -3093,12 +3339,14 @@ class MainWindow(QMainWindow):
             dialog.setText(msg)
             
             # Botões customizados
-            btn_download = dialog.addButton(self._tr("Download Now"), QMessageBox.ActionRole)
+            btn_download = None
+            if download_url:
+                btn_download = dialog.addButton(self._tr("Download Now"), QMessageBox.ActionRole)
             dialog.addButton(self._tr("Close"), QMessageBox.RejectRole)
             
             dialog.exec()
             
-            if dialog.clickedButton() == btn_download:
+            if btn_download and dialog.clickedButton() == btn_download:
                 import webbrowser
                 webbrowser.open(download_url)
         else:
@@ -3107,6 +3355,23 @@ class MainWindow(QMainWindow):
                 self._tr("Check for Updates"), 
                 self._tr("You are using the latest version.")
             )
+
+    def _resolve_update_download_url(self, raw_url: str | None) -> str | None:
+        if not raw_url:
+            return None
+
+        url = str(raw_url).strip()
+        if not url:
+            return None
+
+        parsed = urlparse(url)
+        if parsed.scheme not in {"http", "https"} or not parsed.netloc:
+            return None
+
+        if parsed.netloc.lower() == "github.com" and parsed.path.rstrip("/") in GENERIC_RELEASE_PATHS:
+            return None
+
+        return url
 
     def _show_game_functions_dialog(self) -> None:
         if self._game_functions_dialog is not None:

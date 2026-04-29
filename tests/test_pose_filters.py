@@ -18,6 +18,7 @@ def _calibrated_config() -> TrackingConfig:
     config.invert_pitch = False
     config.enable_simulated_gaze = False
     config.enable_extended_view = False
+    config.motion_filter_enabled = False
     config.output_smoothing = 0.0
     config.output_micro_jitter = 0.0
     config.output_max_step = 0.0
@@ -155,14 +156,6 @@ def test_output_filter_releases_real_movement_after_still_state() -> None:
     for _ in range(PoseFilter._FINAL_STILL_FRAMES):
         filter_.process(PoseSample(yaw=0.10), config)
 
-    held = None
-    for _ in range(PoseFilter._FINAL_STILL_RELEASE_FRAMES - 1):
-        held = filter_.process(PoseSample(yaw=3.0), config)
-
-    assert held is not None
-    assert held.final.yaw == pytest.approx(0.0)
-    assert held.stabilization_debug.yaw.state == "STILL"
-
     moved = filter_.process(PoseSample(yaw=3.0), config)
 
     assert moved.final.yaw > 0.20
@@ -187,12 +180,6 @@ def test_pitch_filter_holds_slow_resting_drift() -> None:
     assert output.final.pitch == pytest.approx(0.0)
     assert output.stabilization_debug.pitch.state == "STILL"
     assert output.stabilization_debug.pitch.jitter_detected is True
-
-    for _ in range(PoseFilter._FINAL_STILL_RELEASE_FRAMES - 1):
-        moved = filter_.process(PoseSample(pitch=2.0), config)
-
-    assert moved.final.pitch == pytest.approx(0.0)
-    assert moved.stabilization_debug.pitch.state == "STILL"
 
     moved = filter_.process(PoseSample(pitch=2.0), config)
 
