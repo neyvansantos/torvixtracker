@@ -1,3 +1,4 @@
+// Copyright (c) 2026 Neyvan Santos. Todos os direitos reservados.
 const faqs = [
   {
     question: "Preciso de Tobii Eye Tracker?",

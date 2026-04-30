@@ -1,3 +1,4 @@
+// Copyright (c) 2026 Neyvan Santos. Todos os direitos reservados.
 import { NextRequest, NextResponse } from "next/server";
 import { PRICE_AMOUNT, PRODUCT_NAME } from "@/config/product";
 import { createPixPayment } from "@/lib/mercadoPago";

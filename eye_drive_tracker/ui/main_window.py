@@ -1,3 +1,4 @@
+# Copyright (c) 2026 Neyvan Santos. Todos os direitos reservados.
 from __future__ import annotations
 
 import html
@@ -1231,7 +1232,7 @@ class MainWindow(QMainWindow):
         # Footer Credit
         footer = QHBoxLayout()
         footer.addStretch(1)
-        self.footer_label = self._label("Developed by")
+        self.footer_label = QLabel("© 2026 Neyvan Santos. Todos os direitos reservados.")
         self.footer_label.setObjectName("footerCredit")
         self.footer_label.setStyleSheet("color: rgba(255, 255, 255, 0.4); font-size: 10px; margin-top: 5px;")
         footer.addWidget(self.footer_label)
@@ -1536,7 +1537,7 @@ class MainWindow(QMainWindow):
         layout.addStretch(1)
         
         # Crédito de desenvolvedor sutil no rodapé do scroll
-        footer_credit = QLabel(f"Torvix Tracker - {self._tr('Developed by')} Neyvan Santos")
+        footer_credit = QLabel("© 2026 Neyvan Santos. Todos os direitos reservados.")
         footer_credit.setStyleSheet("color: #444; font-size: 10px; margin-top: 20px;")
         footer_credit.setAlignment(Qt.AlignCenter)
         layout.addWidget(footer_credit)

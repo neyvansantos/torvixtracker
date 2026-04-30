@@ -1,3 +1,4 @@
+# Copyright (c) 2026 Neyvan Santos. Todos os direitos reservados.
 from .extended_view import extended_view_curve, curve_points
 from .pose_filters import (
     PipelineOutput,

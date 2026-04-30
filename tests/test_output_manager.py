@@ -1,3 +1,4 @@
+# Copyright (c) 2026 Neyvan Santos. Todos os direitos reservados.
 import pytest
 
 import eye_drive_tracker.output.manager as manager_module

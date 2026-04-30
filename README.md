@@ -1,5 +1,7 @@
 # Torvix Tracker
 
+Copyright (c) 2026 Neyvan Santos. Todos os direitos reservados.
+
 Windows webcam head/eye tracking MVP for ETS2/ATS experimentation.
 
 This MVP is intentionally neutral: it does not ship ETS2/ATS presets or fixed tuning profiles. All runtime shaping values start from neutral defaults and can be changed manually in the UI, then saved as JSON profiles.

@@ -1,3 +1,4 @@
+// Copyright (c) 2026 Neyvan Santos. Todos os direitos reservados.
 import { createClient } from "@supabase/supabase-js";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;

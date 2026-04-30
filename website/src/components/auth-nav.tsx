@@ -1,5 +1,7 @@
 "use client";
 
+// Copyright (c) 2026 Neyvan Santos. Todos os direitos reservados.
+
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";

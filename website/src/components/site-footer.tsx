@@ -1,3 +1,4 @@
+// Copyright (c) 2026 Neyvan Santos. Todos os direitos reservados.
 import Image from "next/image";
 import Link from "next/link";
 
@@ -13,7 +14,7 @@ export function SiteFooter() {
             src="/torvix-logo.png"
             width={544}
           />
-          <span>Torvix Tracker</span>
+          <span>© 2026 Neyvan Santos. Todos os direitos reservados.</span>
         </div>
         <div className="flex flex-wrap gap-4">
           <Link className="hover:text-primary" href="/pricing">

@@ -1,3 +1,4 @@
+// Copyright (c) 2026 Neyvan Santos. Todos os direitos reservados.
 import Link from "next/link";
 import { PRICE_FULL, PRICE_TEXT, PRODUCT_NAME } from "@/config/product";
 

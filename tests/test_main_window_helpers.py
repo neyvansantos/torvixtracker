@@ -1,3 +1,4 @@
+# Copyright (c) 2026 Neyvan Santos. Todos os direitos reservados.
 import pytest
 
 from eye_drive_tracker.tracking.models import PoseSample

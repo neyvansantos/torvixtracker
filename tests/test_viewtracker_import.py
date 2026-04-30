@@ -1,3 +1,4 @@
+# Copyright (c) 2026 Neyvan Santos. Todos os direitos reservados.
 from eye_drive_tracker.profiles import ProfileManager, TrackingConfig, import_viewtracker_ini
 
 

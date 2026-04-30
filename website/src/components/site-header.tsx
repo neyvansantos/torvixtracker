@@ -1,3 +1,4 @@
+// Copyright (c) 2026 Neyvan Santos. Todos os direitos reservados.
 import Image from "next/image";
 import Link from "next/link";
 import { AuthNav } from "@/components/auth-nav";

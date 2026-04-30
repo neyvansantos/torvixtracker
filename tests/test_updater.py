@@ -1,3 +1,4 @@
+# Copyright (c) 2026 Neyvan Santos. Todos os direitos reservados.
 from pathlib import Path
 
 from eye_drive_tracker.updater import update_installer_path

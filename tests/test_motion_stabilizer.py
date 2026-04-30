@@ -1,3 +1,4 @@
+# Copyright (c) 2026 Neyvan Santos. Todos os direitos reservados.
 from eye_drive_tracker.filters.motion_stabilizer import AccelaVectorStabilizer, MotionAxisStabilizer
 
 

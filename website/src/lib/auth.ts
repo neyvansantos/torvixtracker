@@ -1,3 +1,4 @@
+// Copyright (c) 2026 Neyvan Santos. Todos os direitos reservados.
 import type { User } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase";
 
