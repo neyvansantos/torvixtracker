@@ -32,6 +32,19 @@ export default function DashboardPage() {
     }
 
     setCheckingPayment(true);
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+
+    if (session?.access_token) {
+      await fetch("/api/checkout/sync-payment", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+        },
+      }).catch(() => null);
+    }
+
     const userProfile = await getUserProfile(currentUserId);
     setCheckingPayment(false);
 
