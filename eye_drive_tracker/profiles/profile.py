@@ -109,8 +109,8 @@ class TrackingConfig:
     motion_stillness_position_threshold: float = 0.05
     motion_stillness_smoothing_boost: float = 1.50
     motion_stillness_deadzone_boost: float = 1.20
-    motion_snap_enabled: bool = True
-    motion_snap_alpha: float = 0.85
+    motion_snap_enabled: bool = False
+    motion_snap_alpha: float = 0.60
     motion_debug_enabled: bool = False
 
     recenter_hotkey: str = "Ctrl+Alt+R"

@@ -79,6 +79,7 @@ def test_still_jitter_is_held_without_drift() -> None:
 
 def test_fast_rotation_uses_controlled_snap() -> None:
     config = _config()
+    config.motion_snap_enabled = True
     config.motion_rotation_snap_threshold = 8.0
     config.motion_snap_alpha = 0.85
     filter_ = TorvixSmartMotionFilter(config)

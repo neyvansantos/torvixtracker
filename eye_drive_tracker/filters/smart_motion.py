@@ -59,7 +59,8 @@ SMART_MOTION_PRESETS: dict[str, dict[str, float | str | bool]] = {
         "motion_stillness_deadzone_boost": 1.65,
         "motion_rotation_snap_threshold": 11.0,
         "motion_position_snap_threshold": 18.0,
-        "motion_snap_alpha": 0.72,
+        "motion_snap_enabled": False,
+        "motion_snap_alpha": 0.60,
     },
     "balanced": {
         "motion_rotation_smoothing": 1.50,
@@ -72,7 +73,8 @@ SMART_MOTION_PRESETS: dict[str, dict[str, float | str | bool]] = {
         "motion_stillness_deadzone_boost": 1.20,
         "motion_rotation_snap_threshold": 8.0,
         "motion_position_snap_threshold": 15.0,
-        "motion_snap_alpha": 0.85,
+        "motion_snap_enabled": False,
+        "motion_snap_alpha": 0.60,
     },
     "fast_response": {
         "motion_rotation_smoothing": 0.85,
@@ -85,7 +87,8 @@ SMART_MOTION_PRESETS: dict[str, dict[str, float | str | bool]] = {
         "motion_stillness_deadzone_boost": 1.05,
         "motion_rotation_snap_threshold": 5.5,
         "motion_position_snap_threshold": 10.0,
-        "motion_snap_alpha": 0.92,
+        "motion_snap_enabled": True,
+        "motion_snap_alpha": 0.82,
     },
     "cinematic": {
         "motion_rotation_smoothing": 2.35,
@@ -98,7 +101,8 @@ SMART_MOTION_PRESETS: dict[str, dict[str, float | str | bool]] = {
         "motion_stillness_deadzone_boost": 1.45,
         "motion_rotation_snap_threshold": 13.0,
         "motion_position_snap_threshold": 21.0,
-        "motion_snap_alpha": 0.62,
+        "motion_snap_enabled": False,
+        "motion_snap_alpha": 0.55,
     },
 }
 
