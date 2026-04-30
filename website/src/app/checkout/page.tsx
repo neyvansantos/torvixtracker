@@ -2,8 +2,8 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { redirect } from "next/navigation";
-import { useEffect, useState } from "react";
+import { redirect, useRouter } from "next/navigation";
+import { useCallback, useEffect, useState } from "react";
 import { PRICE_FULL, PRICE_TEXT, PRODUCT_NAME } from "@/config/product";
 import { isSupabaseConfigured, supabase } from "@/lib/supabase";
 
@@ -17,9 +17,12 @@ type PixCheckout = {
 };
 
 export default function CheckoutPage() {
+  const router = useRouter();
   const [loadingUser, setLoadingUser] = useState(isSupabaseConfigured);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [loadingPix, setLoadingPix] = useState(false);
+  const [checkingPayment, setCheckingPayment] = useState(false);
+  const [paymentApproved, setPaymentApproved] = useState(false);
   const [pix, setPix] = useState<PixCheckout | null>(null);
   const [error, setError] = useState("");
 
@@ -34,8 +37,68 @@ export default function CheckoutPage() {
     });
   }, []);
 
+  const syncPayment = useCallback(async () => {
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+
+    if (!session?.access_token) {
+      redirect("/login");
+    }
+
+    const response = await fetch("/api/checkout/sync-payment", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${session.access_token}`,
+      },
+    });
+    const data = (await response.json().catch(() => null)) as
+      | { has_pro?: boolean; error?: string }
+      | null;
+
+    if (!response.ok) {
+      setError(data?.error || "Não foi possível verificar o pagamento.");
+      return false;
+    }
+
+    if (data?.has_pro === true) {
+      setPaymentApproved(true);
+      window.setTimeout(() => {
+        router.push("/dashboard");
+        router.refresh();
+      }, 1800);
+      return true;
+    }
+
+    return false;
+  }, [router]);
+
+  useEffect(() => {
+    if (!pix || pix.already_pro || paymentApproved) {
+      return;
+    }
+
+    let attempts = 0;
+    const maxAttempts = 12;
+    const interval = window.setInterval(async () => {
+      attempts += 1;
+      setCheckingPayment(true);
+      const approved = await syncPayment();
+      setCheckingPayment(false);
+
+      if (approved || attempts >= maxAttempts) {
+        window.clearInterval(interval);
+      }
+    }, 5000);
+
+    return () => {
+      window.clearInterval(interval);
+    };
+  }, [pix, paymentApproved, syncPayment]);
+
   async function handleCreatePix() {
     setError("");
+    setPaymentApproved(false);
     setLoadingPix(true);
 
     const {
@@ -63,6 +126,14 @@ export default function CheckoutPage() {
     }
 
     setPix(data);
+
+    if (data.already_pro) {
+      setPaymentApproved(true);
+      window.setTimeout(() => {
+        router.push("/dashboard");
+        router.refresh();
+      }, 1200);
+    }
   }
 
   if (loadingUser) {
@@ -108,6 +179,15 @@ export default function CheckoutPage() {
           </button>
 
           {error ? <p className="mt-5 text-sm text-red-300">{error}</p> : null}
+
+          {paymentApproved ? (
+            <div className="mt-6 rounded-xl border border-primary/35 bg-primary-soft p-5">
+              <h2 className="text-xl font-bold text-white">Pagamento aprovado</h2>
+              <p className="mt-3 leading-7 text-muted">
+                Pro ativado com sucesso. Redirecionando para o painel...
+              </p>
+            </div>
+          ) : null}
 
           {pix?.already_pro ? (
             <div className="mt-8 rounded-xl border border-primary/30 bg-primary-soft p-5">
@@ -157,9 +237,22 @@ export default function CheckoutPage() {
                   </a>
                 ) : null}
                 <p className="mt-5 leading-7 text-muted">
-                  Após o pagamento ser aprovado, seu acesso Pro será liberado
-                  automaticamente.
+                  {checkingPayment
+                    ? "Verificando pagamento aprovado..."
+                    : "Após o pagamento ser aprovado, seu acesso Pro será liberado automaticamente."}
                 </p>
+                <button
+                  className="mt-4 inline-flex h-11 items-center justify-center rounded-md border border-primary/35 px-5 font-bold text-white transition hover:bg-primary-soft disabled:cursor-not-allowed disabled:opacity-60"
+                  disabled={checkingPayment || paymentApproved}
+                  onClick={async () => {
+                    setCheckingPayment(true);
+                    await syncPayment();
+                    setCheckingPayment(false);
+                  }}
+                  type="button"
+                >
+                  {checkingPayment ? "Verificando..." : "Verificar pagamento"}
+                </button>
               </div>
             </div>
           ) : null}
