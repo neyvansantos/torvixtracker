@@ -50,10 +50,11 @@ export async function POST(request: NextRequest) {
       userId: user.id,
     });
 
+    const paymentStatus = pixPayment.status || "pending";
     const { error: purchaseError } = await serviceClient.from("purchases").insert({
       user_id: user.id,
       mercado_pago_payment_id: pixPayment.payment_id,
-      mercado_pago_status: pixPayment.status,
+      mercado_pago_status: paymentStatus,
       amount: PRICE_AMOUNT,
       product_name: PRODUCT_NAME,
     });

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { redirect, useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import type { User } from "@supabase/supabase-js";
 import {
   PRICE_FULL,
@@ -17,6 +17,7 @@ export default function DashboardPage() {
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
+  const [checkingPayment, setCheckingPayment] = useState(false);
   const [downloading, setDownloading] = useState(false);
   const [downloadError, setDownloadError] = useState("");
   const [loginRedirect, setLoginRedirect] = useState<string | null>(
@@ -24,6 +25,20 @@ export default function DashboardPage() {
       ? null
       : "/login?message=Configure o Supabase antes de acessar o painel.",
   );
+
+  const refreshProfile = useCallback(async (currentUserId = user?.id) => {
+    if (!currentUserId) {
+      return;
+    }
+
+    setCheckingPayment(true);
+    const userProfile = await getUserProfile(currentUserId);
+    setCheckingPayment(false);
+
+    if (userProfile) {
+      setProfile(userProfile);
+    }
+  }, [user?.id]);
 
   useEffect(() => {
     let isMounted = true;
@@ -57,6 +72,27 @@ export default function DashboardPage() {
       isMounted = false;
     };
   }, [router]);
+
+  useEffect(() => {
+    if (!user?.id || profile?.has_pro === true) {
+      return;
+    }
+
+    let attempts = 0;
+    const maxAttempts = 12;
+    const interval = window.setInterval(async () => {
+      attempts += 1;
+      await refreshProfile(user.id);
+
+      if (attempts >= maxAttempts) {
+        window.clearInterval(interval);
+      }
+    }, 5000);
+
+    return () => {
+      window.clearInterval(interval);
+    };
+  }, [user?.id, profile?.has_pro, refreshProfile]);
 
   async function handleLogout() {
     await supabase.auth.signOut();
@@ -164,7 +200,7 @@ export default function DashboardPage() {
           </div>
           <div className="rounded-2xl border border-primary/35 bg-primary-soft p-6">
             <h2 className="text-2xl font-bold text-white">
-              {hasPro ? "✅ Pro ativado" : "🔒 Acesso bloqueado"}
+              {hasPro ? "Pro Activated" : "Acesso bloqueado"}
             </h2>
             <p className="mt-4 leading-7 text-muted">
               {hasPro
@@ -184,6 +220,14 @@ export default function DashboardPage() {
                   <li>✔ Sem mensalidade</li>
                   <li>✔ Acesso imediato após compra</li>
                 </ul>
+                <button
+                  className="mt-5 inline-flex h-11 w-full items-center justify-center rounded-md border border-primary/35 px-5 font-bold text-white transition hover:bg-primary-soft disabled:cursor-not-allowed disabled:opacity-60"
+                  disabled={checkingPayment}
+                  onClick={() => refreshProfile()}
+                  type="button"
+                >
+                  {checkingPayment ? "Verificando..." : "Verificar pagamento"}
+                </button>
               </div>
             ) : null}
           </div>
@@ -206,7 +250,7 @@ export default function DashboardPage() {
                 onClick={handleDownload}
                 type="button"
               >
-                {downloading ? "Preparando download..." : "Baixar Torvix Tracker"}
+                {downloading ? "Preparando download..." : "Download Torvix Tracker"}
               </button>
             ) : (
               <Link

@@ -8,6 +8,10 @@ type MercadoPagoPaymentResponse = {
   status: string;
   external_reference?: string | null;
   transaction_amount?: number;
+  payer?: {
+    email?: string | null;
+  };
+  metadata?: Record<string, unknown> | null;
   point_of_interaction?: {
     transaction_data?: {
       qr_code?: string;
@@ -56,6 +60,11 @@ export async function createPixPayment({
       payment_method_id: "pix",
       payer: { email },
       external_reference: userId,
+      metadata: {
+        user_id: userId,
+        email,
+        product: `${PRODUCT_NAME} Pro`,
+      },
       notification_url: `${siteUrl}/api/webhooks/mercado-pago`,
     }),
   });

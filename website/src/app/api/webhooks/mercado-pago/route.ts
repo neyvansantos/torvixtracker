@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { PRICE_AMOUNT } from "@/config/product";
 import {
   getMercadoPagoPayment,
   validateMercadoPagoSignature,
@@ -24,6 +25,31 @@ function getPaymentId(request: NextRequest, body: MercadoPagoWebhookBody) {
   );
 }
 
+function isPaymentEvent(request: NextRequest, body: MercadoPagoWebhookBody) {
+  const searchParams = request.nextUrl.searchParams;
+  const queryType = searchParams.get("type");
+  const queryTopic = searchParams.get("topic");
+  const queryId = searchParams.get("id") || searchParams.get("data.id");
+
+  return (
+    body.type === "payment" ||
+    body.topic === "payment" ||
+    body.action?.startsWith("payment.") === true ||
+    queryType === "payment" ||
+    queryTopic === "payment" ||
+    Boolean(body.data?.id) ||
+    Boolean(queryId)
+  );
+}
+
+function amountMatchesProduct(amount: number | undefined) {
+  if (typeof amount !== "number") {
+    return false;
+  }
+
+  return Math.abs(amount - PRICE_AMOUNT) < 0.001;
+}
+
 export async function POST(request: NextRequest) {
   let body: MercadoPagoWebhookBody = {};
 
@@ -33,11 +59,25 @@ export async function POST(request: NextRequest) {
     body = {};
   }
 
+  console.log("[mercado-pago:webhook] recebido", {
+    action: body.action,
+    type: body.type,
+    topic: body.topic,
+  });
+
+  if (!isPaymentEvent(request, body)) {
+    console.log("[mercado-pago:webhook] evento ignorado: nao e payment");
+    return NextResponse.json({ received: true, ignored: "not_payment_event" });
+  }
+
   const paymentId = getPaymentId(request, body);
 
   if (!paymentId) {
+    console.error("[mercado-pago:webhook] payment_id ausente");
     return NextResponse.json({ error: "payment_id ausente." }, { status: 400 });
   }
+
+  console.log("[mercado-pago:webhook] payment_id identificado", { paymentId });
 
   const signatureIsValid = validateMercadoPagoSignature({
     dataId: paymentId,
@@ -46,46 +86,137 @@ export async function POST(request: NextRequest) {
   });
 
   if (!signatureIsValid) {
-    return NextResponse.json({ error: "Assinatura inválida." }, { status: 401 });
+    console.error("[mercado-pago:webhook] assinatura invalida", { paymentId });
+    return NextResponse.json({ error: "Assinatura invalida." }, { status: 400 });
   }
 
   try {
     const payment = await getMercadoPagoPayment(paymentId);
     const status = payment.status;
-    const serviceClient = createServiceRoleClient();
+    const externalReference = payment.external_reference?.toString() || "";
+    const transactionAmount = payment.transaction_amount;
+    const payerEmail = payment.payer?.email || null;
 
-    const { data: purchase } = await serviceClient
+    console.log("[mercado-pago:webhook] pagamento consultado", {
+      paymentId: String(payment.id),
+      status,
+      externalReference,
+      transactionAmount,
+      payerEmail,
+    });
+
+    const serviceClient = createServiceRoleClient();
+    const { data: purchase, error: purchaseLookupError } = await serviceClient
       .from("purchases")
       .select("id, user_id")
       .eq("mercado_pago_payment_id", paymentId)
       .maybeSingle();
 
-    if (!purchase) {
-      return NextResponse.json({ received: true, ignored: "purchase_not_found" });
+    if (purchaseLookupError) {
+      console.error("[mercado-pago:webhook] erro ao buscar purchase", {
+        paymentId,
+        error: purchaseLookupError.message,
+      });
+      return NextResponse.json({ error: "Erro ao buscar compra." }, { status: 500 });
     }
 
-    await serviceClient
-      .from("purchases")
-      .update({
-        mercado_pago_status: status,
-        updated_at: new Date().toISOString(),
-      })
-      .eq("id", purchase.id);
+    const userId = externalReference || purchase?.user_id || "";
 
-    if (status === "approved") {
-      await serviceClient
-        .from("profiles")
+    if (!userId) {
+      console.error("[mercado-pago:webhook] usuario nao identificado", {
+        paymentId,
+        externalReference,
+        purchaseFound: Boolean(purchase),
+      });
+      return NextResponse.json({
+        received: true,
+        ignored: "user_not_found",
+        status,
+      });
+    }
+
+    console.log("[mercado-pago:webhook] user_id identificado", { userId });
+
+    if (purchase) {
+      const { error: purchaseUpdateError } = await serviceClient
+        .from("purchases")
         .update({
-          has_pro: true,
-          plan: "pro",
+          mercado_pago_status: status || "unknown",
+          updated_at: new Date().toISOString(),
         })
-        .eq("id", purchase.user_id);
+        .eq("id", purchase.id);
+
+      if (purchaseUpdateError) {
+        console.error("[mercado-pago:webhook] erro ao atualizar purchase", {
+          paymentId,
+          purchaseId: purchase.id,
+          error: purchaseUpdateError.message,
+        });
+        return NextResponse.json({ error: "Erro ao atualizar compra." }, { status: 500 });
+      }
+
+      console.log("[mercado-pago:webhook] purchase atualizada", {
+        paymentId,
+        purchaseId: purchase.id,
+        status,
+      });
+    } else {
+      console.error("[mercado-pago:webhook] purchase nao encontrada para payment_id", {
+        paymentId,
+        userId,
+      });
     }
+
+    if (status !== "approved") {
+      console.log("[mercado-pago:webhook] status sem liberacao Pro", {
+        paymentId,
+        status,
+      });
+      return NextResponse.json({ received: true, status });
+    }
+
+    if (!amountMatchesProduct(transactionAmount)) {
+      console.error("[mercado-pago:webhook] valor divergente, Pro nao liberado", {
+        paymentId,
+        transactionAmount,
+        expectedAmount: PRICE_AMOUNT,
+      });
+      return NextResponse.json({
+        received: true,
+        status,
+        ignored: "amount_mismatch",
+      });
+    }
+
+    const { error: profileUpdateError } = await serviceClient
+      .from("profiles")
+      .update({
+        has_pro: true,
+        plan: "pro",
+      })
+      .eq("id", userId);
+
+    if (profileUpdateError) {
+      console.error("[mercado-pago:webhook] erro ao atualizar profile", {
+        userId,
+        error: profileUpdateError.message,
+      });
+      return NextResponse.json({ error: "Erro ao atualizar perfil." }, { status: 500 });
+    }
+
+    console.log("[mercado-pago:webhook] profile atualizado com Pro", {
+      userId,
+      paymentId,
+    });
 
     return NextResponse.json({ received: true, status });
   } catch (error) {
     const message =
       error instanceof Error ? error.message : "Erro ao processar webhook.";
+    console.error("[mercado-pago:webhook] erro de servidor", {
+      paymentId,
+      error: message,
+    });
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }
