@@ -4,6 +4,11 @@ import {
   createServiceRoleClient,
 } from "@/lib/supabase-server";
 
+const DOWNLOAD_URL =
+  process.env.TORVIX_INSTALLER_DOWNLOAD_URL ||
+  "https://github.com/NeyvanSantos/TorvixTracker/releases/latest/download/TorvixTracker_Setup.exe";
+const RELEASES_URL = "https://github.com/NeyvanSantos/TorvixTracker/releases/latest";
+
 export async function POST(request: NextRequest) {
   const authHeader = request.headers.get("authorization");
   const accessToken = authHeader?.replace("Bearer ", "");
@@ -33,7 +38,8 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Acesso Pro necessário." }, { status: 403 });
   }
 
-  const DOWNLOAD_URL = "https://github.com/NeyvanSantos/TorvixTracker/releases/latest/download/TorvixTracker_Setup.exe";
-
-  return NextResponse.redirect(DOWNLOAD_URL);
+  return NextResponse.json({
+    download_url: DOWNLOAD_URL,
+    releases_url: RELEASES_URL,
+  });
 }

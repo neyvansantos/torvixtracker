@@ -26,8 +26,8 @@ NEXT_PUBLIC_SITE_URL=http://localhost:3000
 MERCADO_PAGO_ACCESS_TOKEN=your-mercado-pago-access-token
 MERCADO_PAGO_WEBHOOK_SECRET=your-mercado-pago-webhook-secret
 SUPABASE_SERVICE_ROLE_KEY=your-supabase-service-role-key
-# opcional em produção, caso o instalador não fique em website/private/TorvixInstaller.exe
-TORVIX_INSTALLER_PATH=
+# opcional: URL publica direta do instalador mais recente
+TORVIX_INSTALLER_DOWNLOAD_URL=
 ```
 
 Nunca coloque `MERCADO_PAGO_ACCESS_TOKEN`, `MERCADO_PAGO_WEBHOOK_SECRET` ou
@@ -62,13 +62,15 @@ O dashboard lê `profiles.plan` e `profiles.has_pro`. O download passa pela rota
 server-side `POST /api/download/torvix` e só é entregue quando
 `profiles.has_pro = true`.
 
-Por padrão, a rota procura o instalador em:
+Por padrão, a rota aponta para o asset `latest` do GitHub Releases:
 
 ```text
-website/private/TorvixInstaller.exe
+https://github.com/NeyvanSantos/TorvixTracker/releases/latest/download/TorvixTracker_Setup.exe
 ```
 
-Em produção, você pode apontar outro caminho absoluto com `TORVIX_INSTALLER_PATH`.
+Se o repositório/release for privado, clientes sem acesso ao GitHub receberão
+404. Nesse caso, publique o instalador em uma URL acessível e configure
+`TORVIX_INSTALLER_DOWNLOAD_URL`.
 
 ```sql
 create table public.profiles (

@@ -144,15 +144,17 @@ export default function DashboardPage() {
       return;
     }
 
-    const blob = await response.blob();
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = "TorvixInstaller.exe";
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-    URL.revokeObjectURL(url);
+    const data = (await response.json()) as {
+      download_url?: string;
+      releases_url?: string;
+    };
+
+    if (!data.download_url) {
+      setDownloadError("Link do instalador não encontrado.");
+      return;
+    }
+
+    window.location.href = data.download_url;
   }
 
   if (loginRedirect) {
