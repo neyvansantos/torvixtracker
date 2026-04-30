@@ -32,3 +32,5 @@ ENV/
 assets/icon.ico
 *.log
 config.json
+installer/
+private/

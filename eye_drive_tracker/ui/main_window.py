@@ -47,7 +47,7 @@ from eye_drive_tracker.filters import (
 from eye_drive_tracker.output import OUTPUT_MODE_LABELS, OutputManager
 from eye_drive_tracker.profiles import ProfileManager, TrackingConfig
 from eye_drive_tracker.tracking import AsyncHeadPoseWorker, GazeSample, PoseSample, TrackingResult
-from eye_drive_tracker.updater import UpdateChecker
+from eye_drive_tracker.updater import UpdateChecker, UpdateInstallerDownloader, launch_update_installer
 
 from .controls import FloatSlider
 from .camera_settings_dialog import CameraSettingsDialog
@@ -1106,6 +1106,7 @@ class MainWindow(QMainWindow):
         self._game_functions_dialog: QDialog | None = None
         self._update_url = "https://raw.githubusercontent.com/NeyvanSantos/TorvixTracker/main/version.json"
         self._update_checker: UpdateChecker | None = None
+        self._update_downloader: UpdateInstallerDownloader | None = None
 
         self._build_ui()
         self._build_menu()
@@ -3347,14 +3348,44 @@ class MainWindow(QMainWindow):
             dialog.exec()
             
             if btn_download and dialog.clickedButton() == btn_download:
-                import webbrowser
-                webbrowser.open(download_url)
+                self._download_and_run_update(download_url, str(latest or "latest"))
         else:
             QMessageBox.information(
                 self, 
                 self._tr("Check for Updates"), 
                 self._tr("You are using the latest version.")
             )
+
+    def _download_and_run_update(self, download_url: str, latest_version: str) -> None:
+        if self._update_downloader and self._update_downloader.isRunning():
+            return
+
+        self.statusBar().showMessage(self._tr("Downloading update installer..."), 10000)
+        self._update_downloader = UpdateInstallerDownloader(download_url, latest_version)
+        self._update_downloader.finished.connect(self._on_update_download_finished)
+        self._update_downloader.start()
+
+    def _on_update_download_finished(self, result: dict) -> None:
+        if not result.get("success", False):
+            QMessageBox.warning(
+                self,
+                self._tr("Update Download Failed"),
+                f"{self._tr('Could not download update installer')}:\n{result.get('error', 'Unknown error')}",
+            )
+            return
+
+        installer_path = result.get("installer_path")
+        try:
+            launch_update_installer(installer_path)
+        except Exception as exc:
+            QMessageBox.warning(
+                self,
+                self._tr("Update Launch Failed"),
+                f"{self._tr('Could not start update installer')}:\n{exc}",
+            )
+            return
+
+        self.statusBar().showMessage(self._tr("Update installer started."), 5000)
 
     def _resolve_update_download_url(self, raw_url: str | None) -> str | None:
         if not raw_url:

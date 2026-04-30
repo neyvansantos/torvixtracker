@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import {
   getMercadoPagoPayment,
   validateMercadoPagoSignature,
-} from "@/lib/mercado-pago";
+} from "@/lib/mercadoPago";
 import { createServiceRoleClient } from "@/lib/supabase-server";
 
 type MercadoPagoWebhookBody = {

@@ -29,7 +29,7 @@ def test_import_viewtracker_ini_applies_accela_like_defaults(tmp_path) -> None:
     assert config.output_micro_jitter == 0.10
     assert config.output_max_step == 18.0
     assert config.head_tracking_exponent == 1.08
-    assert config.output_mode == "trackir"
+    assert config.output_mode == "opentrack_udp"
 
 
 def test_profile_manager_imports_viewtracker_ini(tmp_path) -> None:

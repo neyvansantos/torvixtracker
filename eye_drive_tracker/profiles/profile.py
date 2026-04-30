@@ -130,7 +130,7 @@ class TrackingConfig:
     calibration_down_set: bool = False
     calibration_down_pitch: float = 0.0
 
-    output_mode: str = "trackir"
+    output_mode: str = "opentrack_udp"
 
     def to_dict(self) -> dict:
         return asdict(self)

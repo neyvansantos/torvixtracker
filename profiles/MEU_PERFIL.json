@@ -73,6 +73,6 @@
     "calibration_up_pitch": 0.0,
     "calibration_down_set": false,
     "calibration_down_pitch": 0.0,
-    "output_mode": "freetrack"
+    "output_mode": "opentrack_udp"
   }
 }

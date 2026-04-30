@@ -3,6 +3,9 @@ import json
 import subprocess
 from pathlib import Path
 
+REPO_RELEASE_BASE_URL = "https://github.com/NeyvanSantos/TorvixTracker/releases/download"
+INSTALLER_ASSET_NAME = "TorvixTracker_Setup.exe"
+
 def update_version_in_init(new_version):
     init_path = Path(__file__).parent.parent / "eye_drive_tracker/__init__.py"
     if not init_path.exists():
@@ -32,13 +35,14 @@ def update_version_json(new_version, changelog):
     
     data['version'] = new_version
     data['changelog'] = changelog
-    data['download_url'] = ""
+    data['download_url'] = f"{REPO_RELEASE_BASE_URL}/v{new_version}/{INSTALLER_ASSET_NAME}"
     
     with open(json_path, 'w', encoding='utf-8') as f:
         json.dump(data, f, indent=2, ensure_ascii=False)
     
     print(f"[OK] version.json atualizado para {new_version}")
-    print("[AVISO] download_url foi limpo. Publique um arquivo e atualize o version.json com o link direto do instalador.")
+    print(f"[OK] download_url aponta para o asset do instalador: {data['download_url']}")
+    print(f"[AVISO] Publique o asset com o nome exato {INSTALLER_ASSET_NAME} no release v{new_version}.")
     return True
 
 def run_build():

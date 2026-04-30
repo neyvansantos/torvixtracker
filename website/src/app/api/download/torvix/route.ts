@@ -1,13 +1,8 @@
-import { readFile, stat } from "node:fs/promises";
 import { NextRequest, NextResponse } from "next/server";
 import {
   createServerAnonClient,
   createServiceRoleClient,
 } from "@/lib/supabase-server";
-
-function getInstallerPath() {
-  return process.env.TORVIX_INSTALLER_PATH || "private/TorvixInstaller.exe";
-}
 
 export async function POST(request: NextRequest) {
   const authHeader = request.headers.get("authorization");
@@ -38,23 +33,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Acesso Pro necessário." }, { status: 403 });
   }
 
-  const installerPath = getInstallerPath();
+  const DOWNLOAD_URL = "https://github.com/NeyvanSantos/TorvixTracker/releases/latest/download/TorvixTracker_Setup.exe";
 
-  try {
-    const installerStat = await stat(installerPath);
-    const installer = await readFile(installerPath);
-
-    return new NextResponse(installer, {
-      headers: {
-        "Content-Disposition": 'attachment; filename="TorvixInstaller.exe"',
-        "Content-Length": installerStat.size.toString(),
-        "Content-Type": "application/vnd.microsoft.portable-executable",
-      },
-    });
-  } catch {
-    return NextResponse.json(
-      { error: "Instalador não encontrado no servidor." },
-      { status: 404 },
-    );
-  }
+  return NextResponse.redirect(DOWNLOAD_URL);
 }

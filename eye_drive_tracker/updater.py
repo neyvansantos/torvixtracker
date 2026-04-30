@@ -1,5 +1,11 @@
 import json
+import re
+import subprocess
+import tempfile
 import urllib.request
+from pathlib import Path
+from urllib.parse import urlparse
+
 from PySide6.QtCore import QThread, Signal
 
 
@@ -54,3 +60,55 @@ class UpdateChecker(QThread):
         except Exception:
             # Fallback para comparação de string se o formato for estranho
             return latest > current
+
+
+class UpdateInstallerDownloader(QThread):
+    """
+    Baixa o instalador de atualizacao sem travar a UI.
+    """
+
+    finished = Signal(dict)
+
+    def __init__(self, download_url: str, version: str):
+        super().__init__()
+        self.download_url = download_url
+        self.version = version
+
+    def run(self):
+        try:
+            target = update_installer_path(self.download_url, self.version)
+            target.parent.mkdir(parents=True, exist_ok=True)
+
+            request = urllib.request.Request(
+                self.download_url,
+                headers={"User-Agent": "TorvixTracker-Updater"},
+            )
+            with urllib.request.urlopen(request, timeout=60) as response:
+                with target.open("wb") as file:
+                    while True:
+                        chunk = response.read(1024 * 256)
+                        if not chunk:
+                            break
+                        file.write(chunk)
+
+            if target.stat().st_size <= 0:
+                raise OSError("Downloaded installer is empty")
+
+            self.finished.emit({"success": True, "installer_path": str(target)})
+        except Exception as exc:
+            self.finished.emit({"success": False, "error": str(exc)})
+
+
+def update_installer_path(download_url: str, version: str) -> Path:
+    safe_version = re.sub(r"[^0-9A-Za-z_.-]+", "_", str(version).strip() or "latest")
+    parsed = urlparse(download_url)
+    name = Path(parsed.path).name
+    suffix = Path(name).suffix if Path(name).suffix.lower() == ".exe" else ".exe"
+    return Path(tempfile.gettempdir()) / "TorvixTrackerUpdates" / f"TorvixTracker_Setup_{safe_version}{suffix}"
+
+
+def launch_update_installer(installer_path: str | Path) -> None:
+    path = Path(installer_path)
+    if not path.exists():
+        raise FileNotFoundError(str(path))
+    subprocess.Popen([str(path), "/CLOSEAPPLICATIONS"], close_fds=True)

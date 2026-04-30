@@ -18,11 +18,13 @@ from eye_drive_tracker.tracking.models import PoseSample
 from .freetrack import FreeTrackOutput
 from .mouse_look import MouseLookOutput
 from .npclient import find_npclient_bridge
+from .opentrack_udp import OpenTrackUdpOutput
 
 
 class OutputMode(str, Enum):
     FREETRACK = "freetrack"
     TRACKIR = "trackir"
+    OPENTRACK_UDP = "opentrack_udp"
     VJOY = "vjoy"
     MOUSE_LOOK = "mouse_look"
 
@@ -30,6 +32,7 @@ class OutputMode(str, Enum):
 OUTPUT_MODE_LABELS = {
     OutputMode.FREETRACK: "FreeTrack",
     OutputMode.TRACKIR: "TrackIR compatible (Recommended)",
+    OutputMode.OPENTRACK_UDP: "OpenTrack UDP",
     OutputMode.VJOY: "vJoy",
     OutputMode.MOUSE_LOOK: "Mouse Look fallback",
 }
@@ -184,6 +187,7 @@ def sendOutputToGame(
     running: bool,
     freetrack_backend: FreeTrackOutput | None = None,
     mouse_backend: MouseLookOutput | None = None,
+    opentrack_backend: OpenTrackUdpOutput | None = None,
     raw_pose: PoseSample | None = None,
     trackir_status: str | None = None,
 ) -> str:
@@ -207,6 +211,11 @@ def sendOutputToGame(
         if mouse_backend is None:
             return "Mouse Look backend unavailable"
         return mouse_backend.send(pose)
+
+    if selected_mode == OutputMode.OPENTRACK_UDP:
+        if opentrack_backend is None:
+            return "OpenTrack UDP backend unavailable"
+        return opentrack_backend.send(pose)
 
     if selected_mode == OutputMode.VJOY:
         return "vJoy selected; driver backend pending"
@@ -244,6 +253,7 @@ class OutputManager:
         self.status = "Stopped"
         self._freetrack = FreeTrackOutput()
         self._mouse = MouseLookOutput()
+        self._opentrack = OpenTrackUdpOutput()
         self._previous_target_pose = PoseSample()
         self._previous_raw_pose = PoseSample()
         self._target_pose = PoseSample()
@@ -307,6 +317,8 @@ class OutputManager:
                 status = self._trackir_status
         elif mode == OutputMode.MOUSE_LOOK:
             status = self._mouse.start()
+        elif mode == OutputMode.OPENTRACK_UDP:
+            status = self._opentrack.start()
         elif mode == OutputMode.VJOY:
             status = "vJoy selected; driver backend pending"
         else:
@@ -322,6 +334,7 @@ class OutputManager:
         self._stop_output_thread()
         self._freetrack.stop()
         self._mouse.stop()
+        self._opentrack.stop()
         with self._state_lock:
             self._reset_runtime_state()
             self.status = "Stopped"
@@ -411,6 +424,7 @@ class OutputManager:
             running,
             freetrack_backend=self._freetrack,
             mouse_backend=self._mouse,
+            opentrack_backend=self._opentrack,
             raw_pose=raw_pose,
             trackir_status=trackir_status,
         )

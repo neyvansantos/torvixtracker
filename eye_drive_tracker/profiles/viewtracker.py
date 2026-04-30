@@ -28,7 +28,7 @@ def import_viewtracker_ini(path: str | Path, base_config: TrackingConfig | None 
         _apply_spline_like_curve(config)
 
     if "freetrack" in protocol_name:
-        config.output_mode = "trackir"
+        config.output_mode = "opentrack_udp"
 
     return config
 

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { PRICE_AMOUNT, PRODUCT_NAME } from "@/config/product";
-import { createPixPayment } from "@/lib/mercado-pago";
+import { createPixPayment } from "@/lib/mercadoPago";
 import {
   createServerAnonClient,
   createServiceRoleClient,

@@ -46,3 +46,25 @@ def test_output_manager_still_moves_for_real_side_change(monkeypatch) -> None:
     output.tick(now=1.024)
 
     assert sent[-1].yaw > 20.0
+
+
+def test_send_output_to_opentrack_udp_backend() -> None:
+    class Backend:
+        def __init__(self) -> None:
+            self.sent: list[PoseSample] = []
+
+        def send(self, pose: PoseSample) -> str:
+            self.sent.append(pose)
+            return "OpenTrack UDP active"
+
+    backend = Backend()
+
+    status = manager_module.sendOutputToGame(
+        PoseSample(yaw=7.0),
+        "opentrack_udp",
+        True,
+        opentrack_backend=backend,
+    )
+
+    assert status == "OpenTrack UDP active"
+    assert backend.sent[-1].yaw == pytest.approx(7.0)
