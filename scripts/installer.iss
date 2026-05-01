@@ -1,8 +1,8 @@
-; Copyright (c) 2026 Neyvan Santos. Todos os direitos reservados.
+; Copyright (c) 2026 Torvix Tracker. Todos os direitos reservados.
 ; Script gerado pelo Antigravity para o Torvix Tracker
 #define AppName "Torvix Tracker"
 #define AppVersion "0.1.4"
-#define AppPublisher "Neyvan Santos"
+#define AppPublisher "Torvix Tracker"
 #define AppURL "https://github.com/NeyvanSantos/TorvixTracker"
 #define AppExeName "TorvixTracker.exe"
 
@@ -13,7 +13,7 @@ AppId={{C7892E52-2706-49AF-9C3C-FE8645D838DF}
 AppName={#AppName}
 AppVersion={#AppVersion}
 AppPublisher={#AppPublisher}
-AppCopyright=Copyright (c) 2026 Neyvan Santos. Todos os direitos reservados.
+AppCopyright=Copyright (c) 2026 Torvix Tracker. Todos os direitos reservados.
 AppPublisherURL={#AppURL}
 AppSupportURL={#AppURL}
 AppUpdatesURL={#AppURL}

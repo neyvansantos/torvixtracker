@@ -1,4 +1,4 @@
-# Copyright (c) 2026 Neyvan Santos. Todos os direitos reservados.
+# Copyright (c) 2026 Torvix Tracker. Todos os direitos reservados.
 from __future__ import annotations
 
 
@@ -16,7 +16,7 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
         "Process Detection": "Process Detection",
         "System Preferences": "System Preferences",
         "Track": "Track",
-        "Developed by": "Developed by Neyvan Santos",
+        "Developed by": "Developed by Torvix Tracker",
         "File": "File",
         "Help": "Help",
         "About": "About",
@@ -358,7 +358,7 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
         "Changelog": "Notas de Lançamento",
         "You are using the latest version.": "Você está usando a versão mais recente.",
         "Check Updates": "Verificar",
-        "Developed by": "Desenvolvido por Neyvan Santos",
+        "Developed by": "Desenvolvido por Torvix Tracker",
         "Version": "Versão",
         "This project is powered by open source software:": "Este projeto é movido por software de código aberto:",
         "Close": "Fechar",
@@ -396,7 +396,7 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
         "Could not import ViewTracker/OpenTrack profile": "No se pudo importar el perfil ViewTracker/OpenTrack",
         "Save Profile": "Guardar Perfil",
         "Language": "Idioma",
-        "Developed by": "Desarrollado por Neyvan Santos",
+        "Developed by": "Desarrollado por Torvix Tracker",
         "Webcam": "Webcam",
         "About & Credits": "Acerca de y Créditos",
         "Check for Updates": "Buscar Actualizaciones",

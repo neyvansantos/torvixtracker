@@ -1,4 +1,4 @@
-// Copyright (c) 2026 Neyvan Santos. Todos os direitos reservados.
+// Copyright (c) 2026 Torvix Tracker. Todos os direitos reservados.
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { SiteFooter } from "@/components/site-footer";
@@ -37,6 +37,7 @@ export default function RootLayout({
     >
       <head>
         <meta charSet="utf-8" />
+        <meta name="google-site-verification" content="J8winAvO2OwFah8dSDQhSm1z8ra9cJUERPyyOPTZhBE" />
       </head>
       <body className="min-h-full bg-background text-foreground">
         <div className="flex min-h-svh flex-col">

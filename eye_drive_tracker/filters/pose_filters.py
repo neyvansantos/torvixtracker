@@ -1,4 +1,4 @@
-# Copyright (c) 2026 Neyvan Santos. Todos os direitos reservados.
+# Copyright (c) 2026 Torvix Tracker. Todos os direitos reservados.
 from __future__ import annotations
 
 import logging
@@ -422,6 +422,7 @@ class PoseFilter:
     _TRANSLATION_MIN_SMOOTHING = 0.10
     _OUTPUT_TRANSLATION_JITTER_CM = 0.04
     _OUTPUT_TRANSLATION_MAX_STEP_CM = 0.90
+    _HEAD_ROLL_OUTPUT_LIMIT = 30.0
     _FINAL_STILL_FRAMES = 8
     _FINAL_SPIKE_MULTIPLIER = 2.5
     _FINAL_STILL_RELEASE_FRAMES = 2
@@ -739,7 +740,11 @@ class PoseFilter:
         return PoseSample(
             yaw=applyAxisMultiplier(normalized.yaw * config.max_head_angle, yaw_multiplier, config.max_head_angle),
             pitch=applyAxisMultiplier(normalized.pitch * config.max_head_angle, pitch_multiplier, config.max_head_angle),
-            roll=applyAxisMultiplier(normalized.roll * config.max_head_angle, config.head_roll_sensitivity, config.max_head_angle),
+            roll=clamp(
+                applyAxisMultiplier(normalized.roll * config.max_head_angle, config.head_roll_sensitivity, config.max_head_angle),
+                -self._HEAD_ROLL_OUTPUT_LIMIT,
+                self._HEAD_ROLL_OUTPUT_LIMIT,
+            ),
             x=translation.x,
             y=translation.y,
             z=translation.z,

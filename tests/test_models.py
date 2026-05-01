@@ -1,4 +1,4 @@
-# Copyright (c) 2026 Neyvan Santos. Todos os direitos reservados.
+# Copyright (c) 2026 Torvix Tracker. Todos os direitos reservados.
 from eye_drive_tracker.tracking.models import GazeSample, PoseSample, TrackingResult
 
 def test_pose_sample_defaults():

@@ -1,4 +1,4 @@
-# Copyright (c) 2026 Neyvan Santos. Todos os direitos reservados.
+# Copyright (c) 2026 Torvix Tracker. Todos os direitos reservados.
 import time
 from types import SimpleNamespace
 
@@ -46,6 +46,22 @@ def test_landmark_yaw_blend_pulls_biased_pnp_yaw_toward_face_geometry() -> None:
     blended = HeadPoseTracker._blend_pnp_and_landmark_yaw(40.0, 5.0)
 
     assert blended < 15.0
+
+
+def test_landmark_roll_uses_eye_line_without_pnp_flip() -> None:
+    landmarks = _landmarks(nose_x=0.50)
+    landmarks[33].y = 0.50
+    landmarks[263].y = 0.60
+
+    roll = HeadPoseTracker._estimate_landmark_roll(landmarks, 100, 100)
+
+    assert roll == pytest.approx(26.565, abs=0.001)
+
+
+def test_landmark_roll_replaces_flipped_pnp_solution() -> None:
+    blended = HeadPoseTracker._blend_pnp_and_landmark_roll(-154.0, -0.5)
+
+    assert blended == pytest.approx(-0.5)
 
 
 def test_stabilize_pose_limits_single_frame_yaw_jump() -> None:

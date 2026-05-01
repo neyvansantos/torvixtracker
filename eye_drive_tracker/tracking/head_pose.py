@@ -1,4 +1,4 @@
-# Copyright (c) 2026 Neyvan Santos. Todos os direitos reservados.
+# Copyright (c) 2026 Torvix Tracker. Todos os direitos reservados.
 from __future__ import annotations
 
 import math
@@ -48,6 +48,10 @@ class HeadPoseTracker:
     _LANDMARK_NOSE_YAW_SCALE = 68.0
     _LANDMARK_DEPTH_YAW_SCALE = 40.0
     _LANDMARK_YAW_LIMIT = 55.0
+    _LANDMARK_ROLL_BLEND = 0.85
+    _LANDMARK_ROLL_LIMIT = 65.0
+    _LANDMARK_ROLL_DISAGREEMENT = 28.0
+    _PNP_ROLL_FLIP_THRESHOLD = 75.0
     _YAW_MAX_STEP_PER_FRAME = 6.0
     _RAW_STILL_FRAMES_REQUIRED = 5
     _RAW_RELEASE_FRAMES_REQUIRED = 1
@@ -580,6 +584,7 @@ class HeadPoseTracker:
             angles = cv2.RQDecomp3x3(rotation_matrix)[0]
             pitch, yaw, roll = (float(angles[0]), float(angles[1]), float(angles[2]))
             yaw = self._blend_pnp_and_landmark_yaw(yaw, self._estimate_landmark_yaw(landmarks))
+            roll = self._blend_pnp_and_landmark_roll(roll, self._estimate_landmark_roll(landmarks, width, height))
             return PoseSample(
                 yaw=self._wrap_angle(yaw),
                 pitch=self._normalize_pitch(pitch),
@@ -599,6 +604,17 @@ class HeadPoseTracker:
         landmark_yaw = cls._wrap_angle(landmark_yaw)
         delta = cls._wrap_angle(landmark_yaw - pnp_yaw)
         return cls._wrap_angle(pnp_yaw + delta * cls._LANDMARK_YAW_BLEND)
+
+    @classmethod
+    def _blend_pnp_and_landmark_roll(cls, pnp_roll: float, landmark_roll: float | None) -> float:
+        if landmark_roll is None:
+            return pnp_roll
+        pnp_roll = cls._wrap_angle(pnp_roll)
+        landmark_roll = cls._wrap_angle(landmark_roll)
+        delta = cls._wrap_angle(landmark_roll - pnp_roll)
+        if abs(pnp_roll) >= cls._PNP_ROLL_FLIP_THRESHOLD or abs(delta) >= cls._LANDMARK_ROLL_DISAGREEMENT:
+            return landmark_roll
+        return cls._wrap_angle(pnp_roll + delta * cls._LANDMARK_ROLL_BLEND)
 
     @classmethod
     def _estimate_landmark_yaw(cls, landmarks: Any) -> float | None:
@@ -626,6 +642,20 @@ class HeadPoseTracker:
             depth_yaw = ((float(eye_a.z) - float(eye_b.z)) / eye_width) * cls._LANDMARK_DEPTH_YAW_SCALE
             yaw = (nose_yaw * 0.65) + (depth_yaw * 0.35)
             return float(max(-cls._LANDMARK_YAW_LIMIT, min(cls._LANDMARK_YAW_LIMIT, yaw)))
+        except (AttributeError, IndexError, TypeError, ValueError):
+            return None
+
+    @classmethod
+    def _estimate_landmark_roll(cls, landmarks: Any, width: int, height: int) -> float | None:
+        try:
+            left = landmarks[33]
+            right = landmarks[263]
+            dx = (float(right.x) - float(left.x)) * max(float(width), 1.0)
+            dy = (float(right.y) - float(left.y)) * max(float(height), 1.0)
+            if abs(dx) <= 0.001:
+                return None
+            roll = math.degrees(math.atan2(dy, dx))
+            return float(max(-cls._LANDMARK_ROLL_LIMIT, min(cls._LANDMARK_ROLL_LIMIT, roll)))
         except (AttributeError, IndexError, TypeError, ValueError):
             return None
 

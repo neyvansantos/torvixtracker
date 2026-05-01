@@ -1,6 +1,6 @@
 # Torvix Tracker
 
-Copyright (c) 2026 Neyvan Santos. Todos os direitos reservados.
+Copyright (c) 2026 Torvix Tracker. Todos os direitos reservados.
 
 Windows webcam head/eye tracking MVP for ETS2/ATS experimentation.
 

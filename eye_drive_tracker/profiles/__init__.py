@@ -1,4 +1,4 @@
-# Copyright (c) 2026 Neyvan Santos. Todos os direitos reservados.
+# Copyright (c) 2026 Torvix Tracker. Todos os direitos reservados.
 from .manager import ProfileManager
 from .profile import TrackingConfig
 from .viewtracker import import_viewtracker_ini

@@ -1,4 +1,4 @@
-# Copyright (c) 2026 Neyvan Santos. Todos os direitos reservados.
+# Copyright (c) 2026 Torvix Tracker. Todos os direitos reservados.
 import pytest
 
 from eye_drive_tracker.filters.pose_filters import PoseFilter
@@ -238,3 +238,17 @@ def test_recenter_uses_stable_average_instead_of_single_frame() -> None:
     center = filter_.estimate_stable_center(PoseSample(yaw=15.0))
 
     assert abs(center.yaw) < 1.0
+
+
+def test_head_roll_output_is_clamped_to_physical_tilt_range() -> None:
+    config = _calibrated_config()
+    config.calibration_center_set = True
+    config.calibration_center_roll = 0.0
+    config.head_roll_sensitivity = 5.0
+    config.max_head_angle = 180.0
+    config.invert_roll = False
+
+    output = PoseFilter().process(PoseSample(roll=90.0), config)
+
+    assert output.head.roll == pytest.approx(PoseFilter._HEAD_ROLL_OUTPUT_LIMIT)
+    assert output.final.roll == pytest.approx(PoseFilter._HEAD_ROLL_OUTPUT_LIMIT)

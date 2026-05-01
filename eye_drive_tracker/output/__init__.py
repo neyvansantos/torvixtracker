@@ -1,4 +1,4 @@
-# Copyright (c) 2026 Neyvan Santos. Todos os direitos reservados.
+# Copyright (c) 2026 Torvix Tracker. Todos os direitos reservados.
 from .manager import OUTPUT_MODE_LABELS, OutputManager, OutputMode, sendOutputToGame, trackir_bridge_status
 from .freetrack import FreeTrackOutput
 from .mouse_look import MouseLookOutput

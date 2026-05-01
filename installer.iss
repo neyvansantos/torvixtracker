@@ -1,8 +1,8 @@
-; Copyright (c) 2026 Neyvan Santos. Todos os direitos reservados.
+; Copyright (c) 2026 Torvix Tracker. Todos os direitos reservados.
 [Setup]
 AppName=Torvix Tracker
 AppVersion=0.1.4
-AppCopyright=Copyright (c) 2026 Neyvan Santos. Todos os direitos reservados.
+AppCopyright=Copyright (c) 2026 Torvix Tracker. Todos os direitos reservados.
 DefaultDirName={pf}\TorvixTracker
 DefaultGroupName=Torvix Tracker
 OutputDir=installer
