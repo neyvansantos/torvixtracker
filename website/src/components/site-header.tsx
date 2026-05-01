@@ -2,6 +2,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { AuthNav } from "@/components/auth-nav";
+import { MobileMenu } from "@/components/mobile-menu";
 
 const navigation = [
   { href: "/", label: "Início" },
@@ -12,17 +13,17 @@ const navigation = [
 export function SiteHeader() {
   return (
     <header className="sticky top-0 z-50 border-b border-border bg-background/82 backdrop-blur-xl">
-      <nav className="mx-auto flex h-16 max-w-6xl items-center justify-between px-5 sm:px-8">
-        <Link className="flex min-w-0 items-center gap-3" href="/">
+      <nav className="relative mx-auto flex h-16 w-full max-w-6xl items-center justify-between gap-3 px-4 sm:px-6 lg:px-8">
+        <Link className="flex min-w-0 items-center gap-2 sm:gap-3" href="/">
           <Image
             alt=""
-            className="h-10 w-auto"
+            className="h-8 w-auto sm:h-10"
             height={980}
             priority
             src="/torvix-icon.png"
             width={544}
           />
-          <span className="truncate text-base font-semibold text-white">
+          <span className="truncate text-sm font-semibold text-white sm:text-base">
             Torvix Tracker
           </span>
         </Link>
@@ -39,7 +40,10 @@ export function SiteHeader() {
           ))}
         </div>
 
-        <AuthNav />
+        <div className="hidden md:block">
+          <AuthNav />
+        </div>
+        <MobileMenu navigation={navigation} />
       </nav>
     </header>
   );

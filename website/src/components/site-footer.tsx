@@ -5,8 +5,8 @@ import Link from "next/link";
 export function SiteFooter() {
   return (
     <footer className="bg-[#030507]">
-      <div className="mx-auto flex max-w-6xl flex-col gap-5 px-5 py-8 text-sm text-muted sm:flex-row sm:items-center sm:justify-between sm:px-8">
-        <div className="flex items-center gap-3">
+      <div className="mx-auto flex w-full max-w-6xl flex-col items-center gap-5 px-4 py-8 text-center text-sm text-muted sm:flex-row sm:justify-between sm:px-6 sm:text-left lg:px-8">
+        <div className="flex max-w-xs flex-col items-center gap-3 sm:max-w-none sm:flex-row">
           <Image
             alt=""
             className="h-8 w-auto"
@@ -16,7 +16,7 @@ export function SiteFooter() {
           />
           <span>© 2026 Torvix Tracker. Todos os direitos reservados.</span>
         </div>
-        <div className="flex flex-wrap gap-4">
+        <div className="flex flex-wrap justify-center gap-x-4 gap-y-2">
           <Link className="hover:text-primary" href="/pricing">
             Preços
           </Link>
