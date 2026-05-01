@@ -65,7 +65,7 @@ server-side `POST /api/download/torvix` e só é entregue quando
 Por padrão, a rota aponta para o asset `latest` do GitHub Releases:
 
 ```text
-https://github.com/NeyvanSantos/TorvixTracker/releases/latest/download/TorvixTracker_Setup.exe
+https://github.com/NeyvanSantos/TorvixTracker/releases/latest/download/TorvixTracker_Setup.rar
 ```
 
 Se o repositório/release for privado, clientes sem acesso ao GitHub receberão

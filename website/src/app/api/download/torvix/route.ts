@@ -7,7 +7,7 @@ import {
 
 const DOWNLOAD_URL =
   process.env.TORVIX_INSTALLER_DOWNLOAD_URL ||
-  "https://github.com/NeyvanSantos/TorvixTracker/releases/latest/download/TorvixTracker_Setup.exe";
+  "https://github.com/NeyvanSantos/TorvixTracker/releases/latest/download/TorvixTracker_Setup.rar";
 const RELEASES_URL = "https://github.com/NeyvanSantos/TorvixTracker/releases/latest";
 
 export async function POST(request: NextRequest) {
