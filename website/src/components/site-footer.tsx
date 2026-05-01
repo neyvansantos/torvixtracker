@@ -26,6 +26,9 @@ export function SiteFooter() {
           <Link className="hover:text-primary" href="/privacidade">
             Privacidade
           </Link>
+          <Link className="hover:text-primary" href="/termos">
+            Termos
+          </Link>
         </div>
       </div>
     </footer>
