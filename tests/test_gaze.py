@@ -3,7 +3,12 @@ from types import SimpleNamespace
 
 import pytest
 
-from eye_drive_tracker.tracking.gaze import estimate_iris_gaze
+from eye_drive_tracker.tracking.gaze import estimate_iris_gaze, reset_iris_gaze_filter
+
+
+@pytest.fixture(autouse=True)
+def _reset_gaze_filter() -> None:
+    reset_iris_gaze_filter()
 
 
 def _landmarks(
@@ -81,3 +86,11 @@ def test_iris_gaze_reports_normalized_coordinates_across_resolutions() -> None:
     assert small.normalized_y == pytest.approx(large.normalized_y)
     assert 0.0 <= small.normalized_x <= 1.0
     assert 0.0 <= small.normalized_y <= 1.0
+
+
+def test_iris_gaze_smooths_subsequent_angle_changes() -> None:
+    centered = estimate_iris_gaze(_landmarks(), 640, 480)
+    shifted = estimate_iris_gaze(_landmarks(iris_dx=0.025), 640, 480)
+
+    assert centered.yaw == pytest.approx(0.0, abs=0.01)
+    assert 0.0 < shifted.yaw < 0.4
