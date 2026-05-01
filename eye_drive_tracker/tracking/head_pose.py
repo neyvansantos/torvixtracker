@@ -44,26 +44,27 @@ class _PoseAxisStillness:
 
 
 class HeadPoseTracker:
-    _LANDMARK_YAW_BLEND = 0.78
-    _LANDMARK_NOSE_YAW_SCALE = 68.0
+    _LANDMARK_YAW_BLEND = 0.88
+    _LANDMARK_YAW_DISAGREEMENT = 12.0
+    _LANDMARK_NOSE_YAW_SCALE = 45.0
     _LANDMARK_DEPTH_YAW_SCALE = 40.0
-    _LANDMARK_YAW_LIMIT = 55.0
+    _LANDMARK_YAW_LIMIT = 40.0
     _LANDMARK_ROLL_BLEND = 0.85
     _LANDMARK_ROLL_LIMIT = 65.0
     _LANDMARK_ROLL_DISAGREEMENT = 28.0
     _PNP_ROLL_FLIP_THRESHOLD = 75.0
-    _YAW_MAX_STEP_PER_FRAME = 6.0
-    _RAW_STILL_FRAMES_REQUIRED = 5
+    _YAW_MAX_STEP_PER_FRAME = 3.0
+    _RAW_STILL_FRAMES_REQUIRED = 7
     _RAW_RELEASE_FRAMES_REQUIRED = 1
-    _RAW_STILL_WINDOW_MULTIPLIER = 3.0
-    _RAW_RELEASE_MULTIPLIER = 4.0
+    _RAW_STILL_WINDOW_MULTIPLIER = 3.8
+    _RAW_RELEASE_MULTIPLIER = 5.0
     _TRACKING_RESET_MISSED_DETECTIONS = 8
     _POSE_RESET_MISSED_DETECTIONS = 90
-    _IRIS_ZOOM_CONFIDENCE_TRIGGER = 0.34
-    _FACE_ZOOM_SIZE_TRIGGER = 0.30
-    _ZOOM_TARGET_SIZE = 512
-    _ZOOM_MAX_SCALE = 3.4
-    _ZOOM_PADDING_RATIO = 0.58
+    _IRIS_ZOOM_CONFIDENCE_TRIGGER = 0.55
+    _FACE_ZOOM_SIZE_TRIGGER = 0.40
+    _ZOOM_TARGET_SIZE = 1000
+    _ZOOM_MAX_SCALE = 4.5
+    _ZOOM_PADDING_RATIO = 0.75
 
     def __init__(self) -> None:
         self._enable_runtime_acceleration()
@@ -176,8 +177,8 @@ class HeadPoseTracker:
                 static_image_mode=False,
                 max_num_faces=1,
                 refine_landmarks=True,
-                min_detection_confidence=0.35,
-                min_tracking_confidence=0.35,
+                min_detection_confidence=0.7,
+                min_tracking_confidence=0.7,
             )
             return
         except Exception as exc:  # pragma: no cover - depends on local install
@@ -603,6 +604,8 @@ class HeadPoseTracker:
         pnp_yaw = cls._wrap_angle(pnp_yaw)
         landmark_yaw = cls._wrap_angle(landmark_yaw)
         delta = cls._wrap_angle(landmark_yaw - pnp_yaw)
+        if abs(delta) >= cls._LANDMARK_YAW_DISAGREEMENT:
+            return landmark_yaw
         return cls._wrap_angle(pnp_yaw + delta * cls._LANDMARK_YAW_BLEND)
 
     @classmethod
@@ -637,11 +640,10 @@ class HeadPoseTracker:
                 mouth_mid_x = (float(mouth_a.x) + float(mouth_b.x)) * 0.5
                 nose_mouth_offset = (float(nose.x) - mouth_mid_x) / mouth_width
                 offset = (nose_eye_offset * 0.65) + (nose_mouth_offset * 0.35)
+                nose_yaw = -offset * cls._LANDMARK_NOSE_YAW_SCALE
+                yaw = nose_yaw
 
-            nose_yaw = -offset * cls._LANDMARK_NOSE_YAW_SCALE
-            depth_yaw = ((float(eye_a.z) - float(eye_b.z)) / eye_width) * cls._LANDMARK_DEPTH_YAW_SCALE
-            yaw = (nose_yaw * 0.65) + (depth_yaw * 0.35)
-            return float(max(-cls._LANDMARK_YAW_LIMIT, min(cls._LANDMARK_YAW_LIMIT, yaw)))
+                return float(max(-cls._LANDMARK_YAW_LIMIT, min(cls._LANDMARK_YAW_LIMIT, yaw)))
         except (AttributeError, IndexError, TypeError, ValueError):
             return None
 
@@ -1015,7 +1017,7 @@ class HeadPoseTracker:
             yaw=self._guard_axis(
                 pose.yaw,
                 self._last_pose.yaw,
-                jitter=0.18,
+                jitter=0.12,
                 max_step=self._YAW_MAX_STEP_PER_FRAME,
             ),
             pitch=self._guard_axis(pose.pitch, self._last_pose.pitch, jitter=0.18, max_step=self._scaled_step(10.0, delta_seconds)),
@@ -1033,10 +1035,13 @@ class HeadPoseTracker:
     @staticmethod
     def _guard_axis(value: float, previous: float, jitter: float, max_step: float) -> float:
         delta = value - previous
+
         if abs(delta) <= jitter:
             return previous
+
         if abs(delta) > max_step:
             return previous + math.copysign(max_step, delta)
+
         return value
 
     def _reset_pose_stillness(self, pose: PoseSample | None = None) -> None:

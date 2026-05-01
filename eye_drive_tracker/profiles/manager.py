@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import sys
 from pathlib import Path
 
 from eye_drive_tracker import __app_name__, __version__
@@ -13,7 +14,10 @@ from .viewtracker import import_viewtracker_ini
 class ProfileManager:
     def __init__(self, base_dir: str | Path | None = None) -> None:
         if base_dir is None:
-            base_dir = Path(__file__).resolve().parent.parent.parent / "profiles"
+            if getattr(sys, "frozen", False):
+                base_dir = Path(sys.executable).resolve().parent / "profiles"
+            else:
+                base_dir = Path(__file__).resolve().parent.parent.parent / "profiles"
         self.base_dir = Path(base_dir)
         self.base_dir.mkdir(parents=True, exist_ok=True)
 

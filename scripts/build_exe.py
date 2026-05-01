@@ -1,61 +1,79 @@
 # Copyright (c) 2026 Torvix Tracker. Todos os direitos reservados.
-import os
-import sys
-import subprocess
 import shutil
+import subprocess
+import sys
 from pathlib import Path
 
-def build():
+
+def build() -> bool:
     print("Iniciando build do TorvixTracker...")
-    
-    # 1. Limpar pastas de build anteriores
-    for folder in ['build', 'dist']:
-        if os.path.exists(folder):
+
+    project_root = Path(__file__).parent.parent
+    for folder in (project_root / "build", project_root / "dist"):
+        if folder.exists():
             print(f"Limpando {folder}...")
             shutil.rmtree(folder)
-            
-    # 2. Definir caminhos
-    project_root = Path(__file__).parent.parent
+
     main_script = project_root / "main.py"
     models_dir = project_root / "models"
     assets_dir = project_root / "assets"
-    
-    if not main_script.exists():
-        print(f"ERRO: {main_script} não encontrado!")
-        return
+    profiles_dir = project_root / "profiles"
+    version_file = project_root / "version.json"
+    output_dir = project_root / "dist" / "TorvixTracker"
 
-    # 3. Montar comando do PyInstaller
-    # --collect-all mediapipe: garante que todas as DLLs e dados do mediapipe sejam incluídos
-    # --add-data "models;models": inclui a pasta de modelos
-    # --noconsole: não abre janela de terminal ao rodar o .exe
-    # --onefile: empacota tudo em um único .exe (opcional, mas o usuário prefere)
-    
+    if not main_script.exists():
+        print(f"ERRO: {main_script} nao encontrado!")
+        return False
+
     command = [
-        sys.executable, "-m", "PyInstaller",
+        sys.executable,
+        "-m",
+        "PyInstaller",
         "--noconsole",
-        "--onefile",
-        "--name", "TorvixTracker",
+        "--onedir",
+        "--name",
+        "TorvixTracker",
         f"--add-data={models_dir};models",
         f"--add-data={assets_dir};assets",
-        "--icon", "assets/icon.ico",
-        "--collect-all", "mediapipe",
-        "--collect-all", "PySide6",
-        "--hidden-import", "mediapipe.python.solutions.face_mesh",
-        "--hidden-import", "mediapipe.python.solutions.drawing_utils",
-        "--hidden-import", "mediapipe.python.solutions.drawing_styles",
-        str(main_script)
+        "--icon",
+        str(assets_dir / "icon.ico"),
+        "--collect-all",
+        "mediapipe",
+        "--collect-all",
+        "PySide6",
+        "--hidden-import",
+        "mediapipe.python.solutions.face_mesh",
+        "--hidden-import",
+        "mediapipe.python.solutions.drawing_utils",
+        "--hidden-import",
+        "mediapipe.python.solutions.drawing_styles",
+        str(main_script),
     ]
-    
+
     print(f"Executando: {' '.join(command)}")
-    
+
     try:
         subprocess.run(command, check=True)
-        print("\n" + "="*30)
-        print("BUILD CONCLUÍDO COM SUCESSO!")
-        print(f"O executável está em: {project_root / 'dist' / 'TorvixTracker.exe'}")
-        print("="*30)
-    except subprocess.CalledProcessError as e:
-        print(f"ERRO no build: {e}")
+    except subprocess.CalledProcessError as exc:
+        print(f"ERRO no build: {exc}")
+        return False
+
+    if assets_dir.exists():
+        shutil.copytree(assets_dir, output_dir / "assets", dirs_exist_ok=True)
+    if models_dir.exists():
+        shutil.copytree(models_dir, output_dir / "models", dirs_exist_ok=True)
+    if profiles_dir.exists():
+        shutil.copytree(profiles_dir, output_dir / "profiles", dirs_exist_ok=True)
+    if version_file.exists():
+        shutil.copy2(version_file, output_dir / "version.json")
+
+    print("\n" + "=" * 30)
+    print("BUILD CONCLUIDO COM SUCESSO!")
+    print(f"Pasta do app: {output_dir}")
+    print(f"Executavel: {output_dir / 'TorvixTracker.exe'}")
+    print("=" * 30)
+    return True
+
 
 if __name__ == "__main__":
-    build()
+    raise SystemExit(0 if build() else 1)

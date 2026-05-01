@@ -11,7 +11,7 @@ Compression=lzma
 SolidCompression=yes
 
 [Files]
-Source: "dist\TorvixTracker.exe"; DestDir: "{app}"; Flags: ignoreversion
+Source: "dist\TorvixTracker\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 [Icons]
 Name: "{group}\Torvix Tracker"; Filename: "{app}\TorvixTracker.exe"

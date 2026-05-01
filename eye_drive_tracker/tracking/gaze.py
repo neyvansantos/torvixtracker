@@ -7,14 +7,15 @@ from typing import Any
 
 from .models import GazeSample
 
+_GAZE_ANTI_JITTER_ALPHA = 0.18
+_last_yaw: float | None = None
+_last_pitch: float | None = None
+
 
 LEFT_EYE_INDICES = [33, 160, 158, 133, 153, 144, 145, 159]
 RIGHT_EYE_INDICES = [263, 387, 385, 362, 380, 373, 374, 386]
 LEFT_IRIS_INDICES = [468, 469, 470, 471, 472]
 RIGHT_IRIS_INDICES = [473, 474, 475, 476, 477]
-_GAZE_ANTI_JITTER_ALPHA = 0.18
-_last_yaw: float | None = None
-_last_pitch: float | None = None
 
 
 @dataclass(frozen=True)
@@ -36,6 +37,8 @@ def reset_iris_gaze_filter() -> None:
 
 
 def estimate_iris_gaze(landmarks: Any, width: int, height: int) -> GazeSample:
+    global _last_yaw, _last_pitch
+
     if len(landmarks) <= max(*LEFT_IRIS_INDICES, *RIGHT_IRIS_INDICES):
         reset_iris_gaze_filter()
         return GazeSample()
@@ -75,7 +78,9 @@ def estimate_iris_gaze(landmarks: Any, width: int, height: int) -> GazeSample:
     total_confidence = sum(eye.confidence for eye in valid)
     raw_yaw = sum(eye.yaw * eye.confidence for eye in valid) / total_confidence
     raw_pitch = sum(eye.pitch * eye.confidence for eye in valid) / total_confidence
+
     yaw, pitch = _filter_gaze_angles(raw_yaw, raw_pitch)
+
     average_confidence = total_confidence / len(valid)
     stereo_factor = 1.0 if len(valid) >= 2 else 0.72
     confidence = _clamp(average_confidence * stereo_factor, 0.0, 1.0)
@@ -111,9 +116,8 @@ def _filter_gaze_angles(raw_yaw: float, raw_pitch: float) -> tuple[float, float]
         _last_pitch = float(raw_pitch)
         return _last_yaw, _last_pitch
 
-    alpha = _GAZE_ANTI_JITTER_ALPHA
-    yaw = _last_yaw + (float(raw_yaw) - _last_yaw) * alpha
-    pitch = _last_pitch + (float(raw_pitch) - _last_pitch) * alpha
+    yaw = _last_yaw + (float(raw_yaw) - _last_yaw) * _GAZE_ANTI_JITTER_ALPHA
+    pitch = _last_pitch + (float(raw_pitch) - _last_pitch) * _GAZE_ANTI_JITTER_ALPHA
     _last_yaw = yaw
     _last_pitch = pitch
     return yaw, pitch

@@ -72,7 +72,13 @@ def test_stabilize_pose_limits_single_frame_yaw_jump() -> None:
 
     stabilized = tracker._stabilize_pose(PoseSample(yaw=17.0))
 
-    assert stabilized.yaw == pytest.approx(11.0)
+    assert stabilized.yaw == pytest.approx(8.0)
+
+
+def test_landmark_yaw_replaces_pnp_when_disagreement_is_large() -> None:
+    blended = HeadPoseTracker._blend_pnp_and_landmark_yaw(-30.0, -2.0)
+
+    assert blended == pytest.approx(-2.0)
 
 
 def test_stabilize_pose_holds_raw_yaw_when_stationary_jitter_continues() -> None:
