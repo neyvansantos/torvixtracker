@@ -1,6 +1,10 @@
+"use client";
+
 // Copyright (c) 2026 Torvix Tracker. Todos os direitos reservados.
 import Link from "next/link";
 import { PRICE_FULL, PRICE_TEXT, PRODUCT_NAME } from "@/config/product";
+import { RevealSection } from "@/components/reveal-section";
+import { motion } from "framer-motion";
 
 const problems = [
   "Hardware de eye tracking dedicado costuma ser caro.",
@@ -63,7 +67,11 @@ export default function Home() {
       <div className="pointer-events-none absolute left-1/2 top-[2140px] -z-10 h-[620px] w-[980px] -translate-x-1/2 rounded-full bg-primary/10 blur-3xl" />
 
       <section className="mx-auto grid min-h-[calc(100svh-4rem)] max-w-6xl items-center gap-12 px-5 py-20 sm:px-8 lg:grid-cols-[1.05fr_0.95fr]">
-        <div>
+        <motion.div
+          animate={{ opacity: 1, x: 0 }}
+          initial={{ opacity: 0, x: -30 }}
+          transition={{ duration: 0.8, ease: "easeOut" }}
+        >
           <p className="mb-5 inline-flex rounded-md border border-primary/30 bg-primary-soft px-3 py-2 text-sm font-semibold text-primary shadow-[0_0_34px_rgba(0,229,255,0.12)]">
             Rastreamento de cabeça e olhar por webcam para ETS2/ATS
           </p>
@@ -103,9 +111,14 @@ export default function Home() {
               Entrar
             </Link>
           </div>
-        </div>
+        </motion.div>
 
-        <div className="relative">
+        <motion.div
+          animate={{ opacity: 1, scale: 1 }}
+          className="relative"
+          initial={{ opacity: 0, scale: 0.9 }}
+          transition={{ duration: 0.8, delay: 0.2, ease: "easeOut" }}
+        >
           <div className="absolute -inset-6 rounded-[2rem] bg-primary/10 blur-3xl" />
           <div className="relative rounded-2xl bg-surface/80 p-4 shadow-2xl ring-1 ring-white/5 backdrop-blur">
             <div className="flex items-center justify-between border-b border-white/10 pb-4">
@@ -145,10 +158,10 @@ export default function Home() {
               </div>
             </div>
           </div>
-        </div>
+        </motion.div>
       </section>
 
-      <section className="border-y border-border bg-black/25">
+      <RevealSection className="border-y border-border bg-black/25">
         <div className="mx-auto max-w-6xl px-5 py-20 sm:px-8">
           <div className="max-w-2xl">
             <p className="text-sm font-bold uppercase tracking-[0.18em] text-primary">
@@ -159,20 +172,24 @@ export default function Home() {
             </h2>
           </div>
           <div className="mt-10 grid gap-4 md:grid-cols-3">
-            {problems.map((problem) => (
-              <article
+            {problems.map((problem, i) => (
+              <motion.article
                 className="rounded-2xl border border-border bg-surface p-6 transition hover:-translate-y-1 hover:border-primary/50"
+                initial={{ opacity: 0, y: 20 }}
                 key={problem}
+                transition={{ delay: 0.1 * i }}
+                viewport={{ once: true }}
+                whileInView={{ opacity: 1, y: 0 }}
               >
                 <div className="mb-5 h-2 w-14 rounded-full bg-primary" />
                 <p className="leading-7 text-muted">{problem}</p>
-              </article>
+              </motion.article>
             ))}
           </div>
         </div>
-      </section>
+      </RevealSection>
 
-      <section className="mx-auto max-w-6xl px-5 py-20 sm:px-8">
+      <RevealSection className="mx-auto max-w-6xl px-5 py-20 sm:px-8">
         <div className="max-w-2xl">
           <p className="text-sm font-bold uppercase tracking-[0.18em] text-primary">
             Solução
@@ -182,21 +199,25 @@ export default function Home() {
           </h2>
         </div>
         <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {solutions.map((solution) => (
-            <article
+          {solutions.map((solution, i) => (
+            <motion.article
               className="rounded-2xl border border-border bg-surface p-6 shadow-[0_20px_80px_rgba(0,0,0,0.18)] transition hover:-translate-y-1 hover:border-primary/50 hover:bg-surface-strong"
+              initial={{ opacity: 0, scale: 0.95 }}
               key={solution}
+              transition={{ delay: 0.05 * i }}
+              viewport={{ once: true }}
+              whileInView={{ opacity: 1, scale: 1 }}
             >
               <div className="mb-5 flex h-11 w-11 items-center justify-center rounded-xl bg-primary-soft text-lg font-black text-primary">
                 +
               </div>
               <h3 className="text-lg font-semibold text-white">{solution}</h3>
-            </article>
+            </motion.article>
           ))}
         </div>
-      </section>
+      </RevealSection>
 
-      <section className="bg-[#020405]">
+      <RevealSection className="bg-[#020405]">
         <div className="mx-auto max-w-6xl px-5 py-20 sm:px-8">
           <div className="grid gap-10 lg:grid-cols-[0.9fr_1.1fr] lg:items-center">
             <div>
@@ -227,9 +248,9 @@ export default function Home() {
             </div>
           </div>
         </div>
-      </section>
+      </RevealSection>
 
-      <section className="border-t border-border bg-black/20">
+      <RevealSection className="border-t border-border bg-black/20">
         <div className="mx-auto max-w-6xl px-5 py-24 sm:px-8">
           <div className="grid gap-12 lg:grid-cols-2 lg:items-center">
             <div className="relative aspect-square max-w-md overflow-hidden rounded-2xl border border-primary/20 bg-surface sm:mx-auto lg:mx-0">
@@ -284,9 +305,9 @@ export default function Home() {
             </div>
           </div>
         </div>
-      </section>
+      </RevealSection>
 
-      <section className="mx-auto max-w-6xl px-5 py-20 sm:px-8">
+      <RevealSection className="mx-auto max-w-6xl px-5 py-20 sm:px-8">
         <div className="max-w-2xl">
           <p className="text-sm font-bold uppercase tracking-[0.18em] text-primary">
             Planos
@@ -305,9 +326,9 @@ export default function Home() {
             price={PRICE_TEXT}
           />
         </div>
-      </section>
+      </RevealSection>
 
-      <section className="border-t border-border bg-black/30">
+      <RevealSection className="border-t border-border bg-black/30">
         <div className="mx-auto max-w-6xl px-5 py-20 sm:px-8">
           <div className="max-w-2xl">
             <p className="text-sm font-bold uppercase tracking-[0.18em] text-primary">
@@ -318,18 +339,22 @@ export default function Home() {
             </h2>
           </div>
           <div className="mt-10 grid gap-4 lg:grid-cols-2">
-            {faqs.map((faq) => (
-              <article
+            {faqs.map((faq, i) => (
+              <motion.article
                 className="rounded-2xl border border-border bg-surface p-6"
+                initial={{ opacity: 0, y: 15 }}
                 key={faq.question}
+                transition={{ delay: 0.1 * i }}
+                viewport={{ once: true }}
+                whileInView={{ opacity: 1, y: 0 }}
               >
                 <h3 className="font-semibold text-white">{faq.question}</h3>
                 <p className="mt-3 leading-7 text-muted">{faq.answer}</p>
-              </article>
+              </motion.article>
             ))}
           </div>
         </div>
-      </section>
+      </RevealSection>
     </main>
   );
 }
