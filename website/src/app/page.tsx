@@ -203,11 +203,18 @@ export default function Home() {
                 o app funcionando com webcam, rastreamento e saída para o simulador.
               </p>
             </div>
-            <div className="rounded-2xl border border-primary/25 bg-[linear-gradient(135deg,rgba(0,229,255,0.12),rgba(255,255,255,0.035))] p-4 shadow-[0_0_60px_rgba(0,229,255,0.10)]">
-              <div className="flex aspect-video items-center justify-center rounded-xl border border-white/10 bg-black/55 text-center">
-                <p className="text-lg font-semibold text-primary">
-                  Vídeo em breve
-                </p>
+            <div className="group relative rounded-2xl border border-primary/25 bg-[linear-gradient(135deg,rgba(0,229,255,0.12),rgba(255,255,255,0.035))] p-2 shadow-[0_0_60px_rgba(0,229,255,0.10)] transition-shadow hover:shadow-[0_0_80px_rgba(0,229,255,0.15)]">
+              <div className="overflow-hidden rounded-xl bg-black/55 shadow-2xl">
+                <div className="aspect-video w-full">
+                  <iframe
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                    allowFullScreen
+                    className="h-full w-full"
+                    frameBorder="0"
+                    src="https://www.youtube.com/embed/UxiLNT4A620?si=DFYff3XkqmD1j25_"
+                    title="Torvix Tracker em ação"
+                  />
+                </div>
               </div>
             </div>
           </div>
