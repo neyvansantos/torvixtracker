@@ -3,24 +3,12 @@
 // Copyright (c) 2026 Torvix Tracker. Todos os direitos reservados.
 
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
-import { FormEvent, Suspense, useState } from "react";
+import { FormEvent, useState } from "react";
 import { isSupabaseConfigured, supabase } from "@/lib/supabase";
 
-export default function LoginPage() {
-  return (
-    <Suspense fallback={<LoginFallback />}>
-      <LoginForm />
-    </Suspense>
-  );
-}
-
-function LoginForm() {
-  const router = useRouter();
-  const searchParams = useSearchParams();
+export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [message, setMessage] = useState(searchParams.get("message") || "");
+  const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -30,30 +18,27 @@ function LoginForm() {
     setMessage("");
 
     if (!isSupabaseConfigured) {
-      setError("Supabase não está configurado. Adicione o .env.local primeiro.");
+      setError("Supabase não está configurado.");
       return;
     }
 
-    if (!email || !password) {
-      setError("E-mail e senha são obrigatórios.");
+    if (!email) {
+      setError("O e-mail é obrigatório.");
       return;
     }
 
     setLoading(true);
-    const { error: signInError } = await supabase.auth.signInWithPassword({
-      email,
-      password,
+    const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/reset-password`,
     });
     setLoading(false);
 
-    if (signInError) {
-      setError("Não foi possível entrar. Verifique seu email e senha.");
+    if (resetError) {
+      setError("Não foi possível enviar o e-mail de recuperação.");
       return;
     }
 
-    setMessage("Entrada realizada com sucesso. Redirecionando...");
-    router.push("/dashboard");
-    router.refresh();
+    setMessage("E-mail de recuperação enviado. Verifique sua caixa de entrada.");
   }
 
   return (
@@ -62,11 +47,11 @@ function LoginForm() {
       <section className="mx-auto flex min-h-[calc(100svh-4rem)] max-w-6xl items-center justify-center px-5 py-20 sm:px-8">
         <div className="w-full max-w-md rounded-2xl border border-border bg-surface p-6 shadow-[0_20px_90px_rgba(0,0,0,0.28)]">
           <p className="mb-4 inline-flex rounded-md border border-primary/30 bg-primary-soft px-3 py-2 text-sm font-semibold text-primary">
-            Conta
+            Recuperação
           </p>
-          <h1 className="text-3xl font-bold tracking-tight text-white">Entrar</h1>
+          <h1 className="text-3xl font-bold tracking-tight text-white">Recuperar senha</h1>
           <p className="mt-3 leading-7 text-muted">
-            Acesse seu painel do Torvix Tracker.
+            Insira seu e-mail para receber instruções de recuperação.
           </p>
 
           <form className="mt-8 space-y-4" onSubmit={handleSubmit}>
@@ -83,27 +68,6 @@ function LoginForm() {
                 value={email}
               />
             </div>
-            <div className="block">
-              <div className="flex items-center justify-between">
-                <label className="text-sm font-semibold text-white" htmlFor="password">
-                  Senha
-                </label>
-                <Link
-                  className="text-xs font-medium text-primary hover:text-white"
-                  href="/forgot-password"
-                >
-                  Esqueceu a senha?
-                </Link>
-              </div>
-              <input
-                className="mt-2 h-12 w-full rounded-md border border-border bg-black/35 px-4 text-white outline-none transition placeholder:text-muted/60 focus:border-primary"
-                id="password"
-                onChange={(event) => setPassword(event.target.value)}
-                placeholder="Sua senha"
-                type="password"
-                value={password}
-              />
-            </div>
 
             {error ? <p className="text-sm text-red-300">{error}</p> : null}
             {message ? <p className="text-sm text-primary">{message}</p> : null}
@@ -113,26 +77,18 @@ function LoginForm() {
               disabled={loading}
               type="submit"
             >
-              {loading ? "Entrando..." : "Entrar"}
+              {loading ? "Enviando..." : "Enviar instruções"}
             </button>
           </form>
 
           <p className="mt-6 text-sm text-muted">
-            Ainda não tem conta?{" "}
-            <Link className="font-semibold text-primary hover:text-white" href="/register">
-              Criar conta
+            Lembrou a senha?{" "}
+            <Link className="font-semibold text-primary hover:text-white" href="/login">
+              Voltar para o login
             </Link>
           </p>
         </div>
       </section>
-    </main>
-  );
-}
-
-function LoginFallback() {
-  return (
-    <main className="flex min-h-[calc(100svh-4rem)] items-center justify-center px-5 text-muted">
-      Carregando login...
     </main>
   );
 }

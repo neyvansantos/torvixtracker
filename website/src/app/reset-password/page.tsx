@@ -3,24 +3,15 @@
 // Copyright (c) 2026 Torvix Tracker. Todos os direitos reservados.
 
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
-import { FormEvent, Suspense, useState } from "react";
+import { useRouter } from "next/navigation";
+import { FormEvent, useState } from "react";
 import { isSupabaseConfigured, supabase } from "@/lib/supabase";
 
-export default function LoginPage() {
-  return (
-    <Suspense fallback={<LoginFallback />}>
-      <LoginForm />
-    </Suspense>
-  );
-}
-
-function LoginForm() {
+export default function ResetPasswordPage() {
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [message, setMessage] = useState(searchParams.get("message") || "");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -30,30 +21,40 @@ function LoginForm() {
     setMessage("");
 
     if (!isSupabaseConfigured) {
-      setError("Supabase não está configurado. Adicione o .env.local primeiro.");
+      setError("Supabase não está configurado.");
       return;
     }
 
-    if (!email || !password) {
-      setError("E-mail e senha são obrigatórios.");
+    if (!password || !confirmPassword) {
+      setError("A nova senha e a confirmação são obrigatórias.");
+      return;
+    }
+
+    if (password.length < 6) {
+      setError("A senha deve ter pelo menos 6 caracteres.");
+      return;
+    }
+
+    if (password !== confirmPassword) {
+      setError("As senhas não conferem.");
       return;
     }
 
     setLoading(true);
-    const { error: signInError } = await supabase.auth.signInWithPassword({
-      email,
-      password,
+    const { error: resetError } = await supabase.auth.updateUser({
+      password: password,
     });
     setLoading(false);
 
-    if (signInError) {
-      setError("Não foi possível entrar. Verifique seu email e senha.");
+    if (resetError) {
+      setError("Não foi possível atualizar a senha. O link pode ter expirado.");
       return;
     }
 
-    setMessage("Entrada realizada com sucesso. Redirecionando...");
-    router.push("/dashboard");
-    router.refresh();
+    setMessage("Senha atualizada com sucesso! Redirecionando...");
+    window.setTimeout(() => {
+      router.push("/login?message=Senha atualizada. Você já pode entrar.");
+    }, 2000);
   }
 
   return (
@@ -62,46 +63,38 @@ function LoginForm() {
       <section className="mx-auto flex min-h-[calc(100svh-4rem)] max-w-6xl items-center justify-center px-5 py-20 sm:px-8">
         <div className="w-full max-w-md rounded-2xl border border-border bg-surface p-6 shadow-[0_20px_90px_rgba(0,0,0,0.28)]">
           <p className="mb-4 inline-flex rounded-md border border-primary/30 bg-primary-soft px-3 py-2 text-sm font-semibold text-primary">
-            Conta
+            Nova senha
           </p>
-          <h1 className="text-3xl font-bold tracking-tight text-white">Entrar</h1>
+          <h1 className="text-3xl font-bold tracking-tight text-white">Redefinir senha</h1>
           <p className="mt-3 leading-7 text-muted">
-            Acesse seu painel do Torvix Tracker.
+            Digite sua nova senha abaixo.
           </p>
 
           <form className="mt-8 space-y-4" onSubmit={handleSubmit}>
             <div className="block">
-              <label className="text-sm font-semibold text-white" htmlFor="email">
-                E-mail
+              <label className="text-sm font-semibold text-white" htmlFor="password">
+                Nova senha
               </label>
-              <input
-                className="mt-2 h-12 w-full rounded-md border border-border bg-black/35 px-4 text-white outline-none transition placeholder:text-muted/60 focus:border-primary"
-                id="email"
-                onChange={(event) => setEmail(event.target.value)}
-                placeholder="seuemail@exemplo.com"
-                type="email"
-                value={email}
-              />
-            </div>
-            <div className="block">
-              <div className="flex items-center justify-between">
-                <label className="text-sm font-semibold text-white" htmlFor="password">
-                  Senha
-                </label>
-                <Link
-                  className="text-xs font-medium text-primary hover:text-white"
-                  href="/forgot-password"
-                >
-                  Esqueceu a senha?
-                </Link>
-              </div>
               <input
                 className="mt-2 h-12 w-full rounded-md border border-border bg-black/35 px-4 text-white outline-none transition placeholder:text-muted/60 focus:border-primary"
                 id="password"
                 onChange={(event) => setPassword(event.target.value)}
-                placeholder="Sua senha"
+                placeholder="Mínimo 6 caracteres"
                 type="password"
                 value={password}
+              />
+            </div>
+            <div className="block">
+              <label className="text-sm font-semibold text-white" htmlFor="confirm_password">
+                Confirmar nova senha
+              </label>
+              <input
+                className="mt-2 h-12 w-full rounded-md border border-border bg-black/35 px-4 text-white outline-none transition placeholder:text-muted/60 focus:border-primary"
+                id="confirm_password"
+                onChange={(event) => setConfirmPassword(event.target.value)}
+                placeholder="Repita a nova senha"
+                type="password"
+                value={confirmPassword}
               />
             </div>
 
@@ -113,26 +106,11 @@ function LoginForm() {
               disabled={loading}
               type="submit"
             >
-              {loading ? "Entrando..." : "Entrar"}
+              {loading ? "Atualizando..." : "Redefinir senha"}
             </button>
           </form>
-
-          <p className="mt-6 text-sm text-muted">
-            Ainda não tem conta?{" "}
-            <Link className="font-semibold text-primary hover:text-white" href="/register">
-              Criar conta
-            </Link>
-          </p>
         </div>
       </section>
-    </main>
-  );
-}
-
-function LoginFallback() {
-  return (
-    <main className="flex min-h-[calc(100svh-4rem)] items-center justify-center px-5 text-muted">
-      Carregando login...
     </main>
   );
 }
