@@ -217,7 +217,7 @@ export default function DashboardPage() {
           </div>
           <div className="rounded-2xl border border-primary/35 bg-primary-soft p-6">
             <h2 className="text-2xl font-bold text-white">
-              {hasPro ? "Pro Activated" : "Acesso bloqueado"}
+              {hasPro ? "Pro ativado" : "Acesso bloqueado"}
             </h2>
             <p className="mt-4 leading-7 text-muted">
               {hasPro

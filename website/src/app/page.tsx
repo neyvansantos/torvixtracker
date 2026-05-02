@@ -9,21 +9,21 @@ const problems = [
 ];
 
 const solutions = [
-  "Rastreamento de cabeça por webcam",
-  "Rastreamento do olhar",
-  "Visão estendida",
-  "Curvas de sensibilidade",
-  "Filtro de movimento",
-  "Saída compatível com TrackIR",
+  "Rastreamento de cabeça por webcam.",
+  "Rastreamento do olhar.",
+  "Visão estendida.",
+  "Curvas de sensibilidade.",
+  "Filtro de movimento.",
+  "Saída compatível com TrackIR.",
 ];
 
 const proPlan = [
-  "Visão estendida",
-  "Rastreamento do olhar",
-  "Curvas de sensibilidade",
-  "Filtro de movimento",
-  "Perfis personalizados",
-  "Atualizações",
+  "Visão estendida.",
+  "Rastreamento do olhar.",
+  "Curvas de sensibilidade.",
+  "Filtro de movimento.",
+  "Perfis personalizados.",
+  "Atualizações constantes.",
 ];
 
 const faqs = [
@@ -68,10 +68,10 @@ export default function Home() {
             Rastreamento de cabeça e olhar por webcam para ETS2/ATS
           </p>
           <h1 className="max-w-4xl text-[clamp(2.5rem,8vw,4.5rem)] leading-[1.1] font-bold tracking-tight text-white">
-            Transforme sua webcam em um rastreador profissional
+            Transforme sua webcam em um rastreador profissional.
           </h1>
           <p className="mt-6 max-w-prose text-lg leading-8 text-muted sm:text-xl">
-            Sem hardware caro. Funciona com ETS2 e ATS.
+            Sem hardware caro. Funciona perfeitamente com ETS2 e ATS.
           </p>
           <div className="mt-7">
             <p className="text-2xl font-black text-primary">
@@ -86,7 +86,7 @@ export default function Home() {
             <ul className="mt-4 grid gap-2 text-sm text-muted sm:grid-cols-3">
               <li>✔ Pagamento único</li>
               <li>✔ Sem mensalidade</li>
-              <li>✔ Acesso imediato após compra</li>
+              <li>✔ Acesso imediato</li>
             </ul>
           </div>
           <div className="mt-9 flex flex-col gap-3 sm:flex-row">
@@ -147,7 +147,7 @@ export default function Home() {
               Problema
             </p>
             <h2 className="mt-3 text-3xl font-bold tracking-tight text-white sm:text-4xl">
-              Imersao em simuladores ainda costuma custar caro.
+              Imersão em simuladores ainda costuma custar caro.
             </h2>
           </div>
           <div className="mt-10 grid gap-4 md:grid-cols-3">
@@ -167,7 +167,7 @@ export default function Home() {
       <section className="mx-auto max-w-6xl px-5 py-20 sm:px-8">
         <div className="max-w-2xl">
           <p className="text-sm font-bold uppercase tracking-[0.18em] text-primary">
-            Solucao
+            Solução
           </p>
           <h2 className="mt-3 text-3xl font-bold tracking-tight text-white sm:text-4xl">
             Recursos pensados para ETS2, ATS e simuladores.
@@ -193,13 +193,13 @@ export default function Home() {
           <div className="grid gap-10 lg:grid-cols-[0.9fr_1.1fr] lg:items-center">
             <div>
               <p className="text-sm font-bold uppercase tracking-[0.18em] text-primary">
-                Em acao
+                Em ação
               </p>
               <h2 className="mt-3 text-3xl font-bold tracking-tight text-white sm:text-4xl">
-                Veja o Torvix Tracker em acao.
+                Veja o Torvix Tracker em ação.
               </h2>
               <p className="mt-5 leading-8 text-muted">
-                Esta area esta preparada para receber um video ou GIF mostrando
+                Esta área está preparada para receber um vídeo ou GIF mostrando
                 o app funcionando com webcam, rastreamento e saída para o simulador.
               </p>
             </div>
@@ -277,7 +277,7 @@ export default function Home() {
             Planos
           </p>
           <h2 className="mt-3 text-3xl font-bold tracking-tight text-white sm:text-4xl">
-            Versao completa paga desde o primeiro acesso.
+            Versão completa paga desde o primeiro acesso.
           </h2>
         </div>
         <div className="mt-10 grid gap-5 lg:grid-cols-1">
@@ -299,7 +299,7 @@ export default function Home() {
               FAQ
             </p>
             <h2 className="mt-3 text-3xl font-bold tracking-tight text-white sm:text-4xl">
-              Duvidas rapidas antes de comprar.
+              Dúvidas rápidas antes de comprar.
             </h2>
           </div>
           <div className="mt-10 grid gap-4 lg:grid-cols-2">
