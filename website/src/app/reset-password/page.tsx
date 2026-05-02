@@ -2,7 +2,6 @@
 
 // Copyright (c) 2026 Torvix Tracker. Todos os direitos reservados.
 
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { FormEvent, useState } from "react";
 import { isSupabaseConfigured, supabase } from "@/lib/supabase";
