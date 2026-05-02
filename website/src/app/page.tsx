@@ -4,7 +4,7 @@ import { PRICE_FULL, PRICE_TEXT, PRODUCT_NAME } from "@/config/product";
 
 const problems = [
   "Hardware de eye tracking dedicado costuma ser caro.",
-  "Configuracoes de rastreamento podem ser limitadas ou pouco flexiveis.",
+  "Configurações de rastreamento podem ser limitadas ou pouco flexíveis.",
   "Jogadores de simulador querem mais imersão, controle e liberdade na câmera.",
 ];
 
