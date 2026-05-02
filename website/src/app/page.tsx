@@ -124,15 +124,23 @@ export default function Home() {
                   <span>Pitch -4</span>
                   <span>Roll +2</span>
                 </div>
-                <div className="mx-auto h-28 w-28 rounded-full border border-primary/80 shadow-[0_0_42px_rgba(0,229,255,0.28)]" />
+                <div className="relative mx-auto h-28 w-28 rounded-full border border-primary/80 shadow-[0_0_42px_rgba(0,229,255,0.28)]">
+                  <div className="absolute inset-0 animate-ping rounded-full bg-primary/20 duration-[3000ms]" />
+                  <div className="absolute inset-2 animate-pulse rounded-full border border-primary/40 bg-primary/5" />
+                </div>
                 <div className="grid gap-2">
-                  {["Cabeça", "Olhar", "Saída TrackIR"].map((item) => (
-                    <div
-                      className="h-2 rounded-full bg-primary/70"
-                      key={item}
-                      title={item}
-                    />
-                  ))}
+                  <div
+                    className="h-2 w-full animate-[pulse_2s_infinite] rounded-full bg-primary/70"
+                    title="Cabeça"
+                  />
+                  <div
+                    className="h-2 w-[85%] animate-[pulse_3s_infinite] rounded-full bg-primary/60"
+                    title="Olhar"
+                  />
+                  <div
+                    className="h-2 w-[92%] animate-[pulse_2.5s_infinite] rounded-full bg-primary/70"
+                    title="Saída TrackIR"
+                  />
                 </div>
               </div>
             </div>
