@@ -67,15 +67,18 @@ export default function Home() {
           <p className="mb-5 inline-flex rounded-md border border-primary/30 bg-primary-soft px-3 py-2 text-sm font-semibold text-primary shadow-[0_0_34px_rgba(0,229,255,0.12)]">
             Rastreamento de cabeça e olhar por webcam para ETS2/ATS
           </p>
-          <h1 className="max-w-4xl text-5xl font-bold tracking-tight text-white sm:text-7xl">
+          <h1 className="max-w-4xl text-[clamp(2.5rem,8vw,4.5rem)] leading-[1.1] font-bold tracking-tight text-white">
             Transforme sua webcam em um rastreador profissional
           </h1>
-          <p className="mt-6 max-w-2xl text-lg leading-8 text-muted sm:text-xl">
+          <p className="mt-6 max-w-prose text-lg leading-8 text-muted sm:text-xl">
             Sem hardware caro. Funciona com ETS2 e ATS.
           </p>
           <div className="mt-7">
             <p className="text-2xl font-black text-primary">
               🔥 Acesso antecipado – {PRICE_TEXT}
+              <span className="ml-3 text-lg font-normal text-muted line-through opacity-50">
+                R$ 147,00
+              </span>
             </p>
             <p className="mt-2 text-sm font-semibold text-white">
               {PRICE_FULL}. Sem mensalidade.
@@ -88,13 +91,13 @@ export default function Home() {
           </div>
           <div className="mt-9 flex flex-col gap-3 sm:flex-row">
             <Link
-              className="inline-flex h-12 items-center justify-center rounded-md bg-primary px-6 text-base font-bold text-[#001014] shadow-[0_0_34px_rgba(0,229,255,0.26)] transition hover:-translate-y-0.5 hover:bg-white"
+              className="inline-flex h-12 min-w-[180px] items-center justify-center rounded-md bg-primary px-6 text-base font-bold text-[#001014] shadow-[0_0_34px_rgba(0,229,255,0.26)] transition hover:-translate-y-0.5 hover:bg-white"
               href="/checkout"
             >
               Comprar por {PRICE_TEXT}
             </Link>
             <Link
-              className="inline-flex h-12 items-center justify-center rounded-md border border-primary/35 bg-white/[0.03] px-6 text-base font-bold text-white transition hover:-translate-y-0.5 hover:border-primary hover:bg-primary-soft"
+              className="inline-flex h-12 min-w-[140px] items-center justify-center rounded-md border border-primary/35 bg-white/[0.03] px-6 text-base font-bold text-white transition hover:-translate-y-0.5 hover:border-primary hover:bg-primary-soft"
               href="/login"
             >
               Entrar
@@ -204,6 +207,63 @@ export default function Home() {
               <div className="flex aspect-video items-center justify-center rounded-xl border border-white/10 bg-black/55 text-center">
                 <p className="text-lg font-semibold text-primary">
                   Vídeo em breve
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="border-t border-border bg-black/20">
+        <div className="mx-auto max-w-6xl px-5 py-24 sm:px-8">
+          <div className="grid gap-12 lg:grid-cols-2 lg:items-center">
+            <div className="relative aspect-square max-w-md overflow-hidden rounded-2xl border border-primary/20 bg-surface sm:mx-auto lg:mx-0">
+              <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(0,229,255,0.15),transparent_70%)]" />
+              <div className="flex h-full flex-col items-center justify-center p-8 text-center">
+                <div className="mb-6 h-20 w-20 rounded-full bg-primary-soft p-5 text-primary">
+                  <svg
+                    className="h-full w-full"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    viewBox="0 0 24 24"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <path
+                      d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
+                </div>
+                <h3 className="text-xl font-bold text-white">Nossa Missão</h3>
+                <p className="mt-4 leading-7 text-muted">
+                  Democratizar o acesso a tecnologias de simulação de alto nível, 
+                  eliminando a barreira financeira de hardwares proprietários caros.
+                </p>
+              </div>
+            </div>
+            <div>
+              <p className="text-sm font-bold uppercase tracking-[0.18em] text-primary">
+                Sobre nós
+              </p>
+              <h2 className="mt-3 text-[clamp(2rem,5vw,3rem)] font-bold tracking-tight text-white">
+                Por que o Torvix Tracker?
+              </h2>
+              <div className="mt-8 space-y-6 text-lg leading-relaxed text-muted">
+                <p>
+                  O Torvix Tracker nasceu da paixão por simuladores de direção. Sabemos que a 
+                  imersão total — poder olhar para os retrovisores apenas movendo a cabeça — 
+                  muda completamente a experiência de jogo.
+                </p>
+                <p>
+                  Nossa solução utiliza algoritmos avançados de visão computacional para 
+                  processar os dados da sua webcam comum com latência mínima, entregando uma 
+                  experiência próxima a de dispositivos que custam centenas de dólares.
+                </p>
+                <p>
+                  Acreditamos na transparência: você paga uma única vez e o software é seu 
+                  para sempre, com todas as atualizações futuras incluídas.
                 </p>
               </div>
             </div>

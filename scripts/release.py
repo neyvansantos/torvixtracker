@@ -2,6 +2,7 @@
 import sys
 import json
 import subprocess
+import hashlib
 from pathlib import Path
 
 REPO_RELEASE_BASE_URL = "https://github.com/NeyvanSantos/TorvixTracker/releases/download"
@@ -69,6 +70,32 @@ def run_installer_build():
         print("Aviso: Nao foi possivel criar o instalador. Certifique-se de que o Inno Setup esta instalado.")
         return True # Não trava o release se o instalador falhar
 
+def inject_sha256_into_json():
+    print("Calculando SHA-256 do instalador...")
+    installer_path = Path(__file__).parent.parent / "dist" / "TorvixTracker_Setup.exe"
+    if not installer_path.exists():
+        print(f"[AVISO] Instalador nao encontrado em {installer_path}. SHA-256 omitido.")
+        return True
+    
+    sha256_hash = hashlib.sha256()
+    with open(installer_path, "rb") as f:
+        for byte_block in iter(lambda: f.read(4096), b""):
+            sha256_hash.update(byte_block)
+    
+    file_hash = sha256_hash.hexdigest()
+    
+    json_path = Path(__file__).parent.parent / "version.json"
+    with open(json_path, 'r', encoding='utf-8') as f:
+        data = json.load(f)
+    
+    data['sha256'] = file_hash
+    
+    with open(json_path, 'w', encoding='utf-8') as f:
+        json.dump(data, f, indent=2, ensure_ascii=False)
+        
+    print(f"[OK] SHA-256 injetado no version.json: {file_hash}")
+    return True
+
 def git_sync(version):
     print("Sincronizando com GitHub...")
     root_dir = Path(__file__).parent.parent
@@ -100,6 +127,8 @@ def main():
     if not run_build():
         return
     if not run_installer_build():
+        return
+    if not inject_sha256_into_json():
         return
     if not git_sync(version):
         return

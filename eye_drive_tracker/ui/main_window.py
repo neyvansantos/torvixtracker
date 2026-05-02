@@ -3324,6 +3324,7 @@ class MainWindow(QMainWindow):
             latest = result.get("latest_version")
             download_url = self._resolve_update_download_url(result.get("download_url"))
             changelog = result.get("changelog")
+            expected_hash = result.get("sha256", "")
 
             msg = f"<h3>{self._tr('New version available!')}</h3>"
             msg += f"<p>{self._tr('Current version')}: {__version__}</p>"
@@ -3349,7 +3350,7 @@ class MainWindow(QMainWindow):
             dialog.exec()
             
             if btn_download and dialog.clickedButton() == btn_download:
-                self._download_and_run_update(download_url, str(latest or "latest"))
+                self._download_and_run_update(download_url, str(latest or "latest"), expected_hash)
         else:
             QMessageBox.information(
                 self, 
@@ -3357,12 +3358,12 @@ class MainWindow(QMainWindow):
                 self._tr("You are using the latest version.")
             )
 
-    def _download_and_run_update(self, download_url: str, latest_version: str) -> None:
+    def _download_and_run_update(self, download_url: str, latest_version: str, expected_hash: str = "") -> None:
         if self._update_downloader and self._update_downloader.isRunning():
             return
 
         self.statusBar().showMessage(self._tr("Downloading update installer..."), 10000)
-        self._update_downloader = UpdateInstallerDownloader(download_url, latest_version)
+        self._update_downloader = UpdateInstallerDownloader(download_url, latest_version, expected_hash)
         self._update_downloader.finished.connect(self._on_update_download_finished)
         self._update_downloader.start()
 

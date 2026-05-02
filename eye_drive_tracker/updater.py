@@ -4,6 +4,7 @@ import re
 import subprocess
 import tempfile
 import urllib.request
+import hashlib
 from pathlib import Path
 from urllib.parse import urlparse
 
@@ -36,7 +37,8 @@ class UpdateChecker(QThread):
                     "has_update": has_update,
                     "latest_version": latest_version,
                     "download_url": download_url,
-                    "changelog": data.get("changelog", "")
+                    "changelog": data.get("changelog", ""),
+                    "sha256": data.get("sha256", "")
                 }
         except Exception as e:
             result = {
@@ -70,10 +72,11 @@ class UpdateInstallerDownloader(QThread):
 
     finished = Signal(dict)
 
-    def __init__(self, download_url: str, version: str):
+    def __init__(self, download_url: str, version: str, expected_hash: str = ""):
         super().__init__()
         self.download_url = download_url
         self.version = version
+        self.expected_hash = expected_hash
 
     def run(self):
         try:
@@ -94,6 +97,20 @@ class UpdateInstallerDownloader(QThread):
 
             if target.stat().st_size <= 0:
                 raise OSError("Downloaded installer is empty")
+
+            if self.expected_hash:
+                sha256_hash = hashlib.sha256()
+                with target.open("rb") as f:
+                    for byte_block in iter(lambda: f.read(4096), b""):
+                        sha256_hash.update(byte_block)
+                actual_hash = sha256_hash.hexdigest()
+                
+                if actual_hash.lower() != self.expected_hash.lower():
+                    try:
+                        target.unlink()
+                    except Exception:
+                        pass
+                    raise ValueError("Security Error: Installer hash verification failed. The file may have been compromised.")
 
             self.finished.emit({"success": True, "installer_path": str(target)})
         except Exception as exc:

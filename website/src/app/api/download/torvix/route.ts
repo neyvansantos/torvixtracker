@@ -5,10 +5,17 @@ import {
   createServiceRoleClient,
 } from "@/lib/supabase-server";
 
-const DOWNLOAD_URL =
-  process.env.TORVIX_INSTALLER_DOWNLOAD_URL ||
+const DEFAULT_DOWNLOAD_URL =
   "https://github.com/NeyvanSantos/TorvixTracker/releases/latest/download/TorvixTracker_Setup.rar";
 const RELEASES_URL = "https://github.com/NeyvanSantos/TorvixTracker/releases/latest";
+
+function installerDownloadUrl() {
+  const configuredUrl = process.env.TORVIX_INSTALLER_DOWNLOAD_URL?.trim();
+  if (!configuredUrl || configuredUrl.includes("/releases/download/Tracker/")) {
+    return DEFAULT_DOWNLOAD_URL;
+  }
+  return configuredUrl;
+}
 
 export async function POST(request: NextRequest) {
   const authHeader = request.headers.get("authorization");
@@ -40,7 +47,7 @@ export async function POST(request: NextRequest) {
   }
 
   return NextResponse.json({
-    download_url: DOWNLOAD_URL,
+    download_url: installerDownloadUrl(),
     releases_url: RELEASES_URL,
   });
 }

@@ -79,46 +79,58 @@ export default function RegisterPage() {
           </p>
 
           <form className="mt-8 space-y-4" onSubmit={handleSubmit}>
-            <label className="block">
-              <span className="text-sm font-semibold text-white">Nome opcional</span>
+            <div className="block">
+              <label className="text-sm font-semibold text-white" htmlFor="full_name">
+                Nome opcional
+              </label>
               <input
                 className="mt-2 h-12 w-full rounded-md border border-border bg-black/35 px-4 text-white outline-none transition placeholder:text-muted/60 focus:border-primary"
+                id="full_name"
                 onChange={(event) => setFullName(event.target.value)}
                 placeholder="Seu nome"
                 type="text"
                 value={fullName}
               />
-            </label>
-            <label className="block">
-              <span className="text-sm font-semibold text-white">E-mail</span>
+            </div>
+            <div className="block">
+              <label className="text-sm font-semibold text-white" htmlFor="email">
+                E-mail
+              </label>
               <input
                 className="mt-2 h-12 w-full rounded-md border border-border bg-black/35 px-4 text-white outline-none transition placeholder:text-muted/60 focus:border-primary"
+                id="email"
                 onChange={(event) => setEmail(event.target.value)}
                 placeholder="seuemail@exemplo.com"
                 type="email"
                 value={email}
               />
-            </label>
-            <label className="block">
-              <span className="text-sm font-semibold text-white">Senha</span>
+            </div>
+            <div className="block">
+              <label className="text-sm font-semibold text-white" htmlFor="password">
+                Senha
+              </label>
               <input
                 className="mt-2 h-12 w-full rounded-md border border-border bg-black/35 px-4 text-white outline-none transition placeholder:text-muted/60 focus:border-primary"
+                id="password"
                 onChange={(event) => setPassword(event.target.value)}
                 placeholder="Mínimo 6 caracteres"
                 type="password"
                 value={password}
               />
-            </label>
-            <label className="block">
-              <span className="text-sm font-semibold text-white">Confirmar senha</span>
+            </div>
+            <div className="block">
+              <label className="text-sm font-semibold text-white" htmlFor="confirm_password">
+                Confirmar senha
+              </label>
               <input
                 className="mt-2 h-12 w-full rounded-md border border-border bg-black/35 px-4 text-white outline-none transition placeholder:text-muted/60 focus:border-primary"
+                id="confirm_password"
                 onChange={(event) => setConfirmPassword(event.target.value)}
                 placeholder="Repita a senha"
                 type="password"
                 value={confirmPassword}
               />
-            </label>
+            </div>
 
             {error ? <p className="text-sm text-red-300">{error}</p> : null}
             {message ? <p className="text-sm text-primary">{message}</p> : null}

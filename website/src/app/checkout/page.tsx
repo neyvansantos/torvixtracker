@@ -222,9 +222,12 @@ export default function CheckoutPage() {
               ) : null}
 
               <div>
-                <h2 className="text-xl font-bold text-white">PIX copia e cola</h2>
+                <label className="text-xl font-bold text-white" htmlFor="pix_code">
+                  PIX copia e cola
+                </label>
                 <textarea
-                  className="mt-4 min-h-36 w-full rounded-md border border-border bg-black/35 p-4 text-sm text-white outline-none"
+                  className="mt-4 min-h-36 w-full rounded-md border border-border bg-black/35 p-4 text-sm text-white outline-none focus:border-primary"
+                  id="pix_code"
                   readOnly
                   value={pix.qr_code || ""}
                 />
