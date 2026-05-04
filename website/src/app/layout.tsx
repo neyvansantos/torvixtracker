@@ -76,7 +76,7 @@ export const metadata: Metadata = {
     description: SITE_DESCRIPTION,
     images: [
       {
-        url: "/torvix-logo.png",
+        url: "/og-image.png",
         width: 1200,
         height: 630,
         alt: `${PRODUCT_NAME} - rastreamento por webcam para ETS2 e ATS`,
@@ -87,7 +87,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: `${PRODUCT_NAME} | Rastreamento Ocular por Webcam`,
     description: SITE_DESCRIPTION,
-    images: ["/torvix-logo.png"],
+    images: ["/og-image.png"],
   },
   icons: {
     icon: [
@@ -107,7 +107,7 @@ const structuredData = [
     "@type": "Organization",
     name: PRODUCT_NAME,
     url: SITE_URL,
-    logo: `${SITE_URL}/torvix-logo.png`,
+    logo: `${SITE_URL}/torvix-search-logo.png`,
   },
   {
     "@context": "https://schema.org",

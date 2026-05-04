@@ -62,14 +62,14 @@ O dashboard lê `profiles.plan` e `profiles.has_pro`. O download passa pela rota
 server-side `POST /api/download/torvix` e só é entregue quando
 `profiles.has_pro = true`.
 
-Por padrão, a rota aponta para o asset `latest` do GitHub Releases:
+Por padrão, a rota aponta para o arquivo do instalador publicado no Google Drive:
 
 ```text
-https://github.com/NeyvanSantos/TorvixTracker/releases/latest/download/TorvixTracker_Setup.rar
+https://drive.google.com/file/d/1Phy29S9tdO1i48UX_r87i5aw9UMpOa8j/view?usp=drive_link
 ```
 
-Se o repositório/release for privado, clientes sem acesso ao GitHub receberão
-404. Nesse caso, publique o instalador em uma URL acessível e configure
+Se precisar trocar o destino sem alterar o código, publique o instalador em uma
+URL acessível e configure
 `TORVIX_INSTALLER_DOWNLOAD_URL`.
 
 ```sql
@@ -173,7 +173,7 @@ liberam acesso Pro.
 2. Rode `npm run dev`.
 3. Entre com um usuário sem Pro.
 4. Acesse `/dashboard` e confirme que o acesso está bloqueado.
-5. Clique em `Comprar por R$19,99`.
+5. Clique em `Comprar por R$ 19,99`.
 6. Clique em `Gerar PIX`.
 7. Pague usando as instruções de teste do Mercado Pago.
 8. Aguarde o webhook.
