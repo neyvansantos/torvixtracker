@@ -6,7 +6,7 @@ import {
 } from "@/lib/supabase-server";
 
 const DEFAULT_DOWNLOAD_URL =
-  "https://drive.google.com/file/d/1Phy29S9tdO1i48UX_r87i5aw9UMpOa8j/view?usp=drive_link";
+  "https://github.com/NeyvanSantos/TorvixTracker/releases/download/v0.1.5/TorvixTracker_Setup.exe";
 const RELEASES_URL = "https://github.com/NeyvanSantos/TorvixTracker/releases/latest";
 
 function installerDownloadUrl() {

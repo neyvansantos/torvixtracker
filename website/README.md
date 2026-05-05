@@ -65,7 +65,7 @@ server-side `POST /api/download/torvix` e só é entregue quando
 Por padrão, a rota aponta para o arquivo do instalador publicado no Google Drive:
 
 ```text
-https://drive.google.com/file/d/1Phy29S9tdO1i48UX_r87i5aw9UMpOa8j/view?usp=drive_link
+https://github.com/NeyvanSantos/TorvixTracker/releases/download/v0.1.5/TorvixTracker_Setup.exe
 ```
 
 Se precisar trocar o destino sem alterar o código, publique o instalador em uma
