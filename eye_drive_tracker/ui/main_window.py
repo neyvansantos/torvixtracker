@@ -27,8 +27,10 @@ from PySide6.QtWidgets import (
     QLineEdit,
     QMainWindow,
     QMessageBox,
+    QMenu,
     QPushButton,
     QScrollArea,
+    QSystemTrayIcon,
     QTextBrowser,
     QToolButton,
     QVBoxLayout,
@@ -1108,9 +1110,14 @@ class MainWindow(QMainWindow):
         self._update_url = "https://raw.githubusercontent.com/NeyvanSantos/TorvixTracker/main/version.json"
         self._update_checker: UpdateChecker | None = None
         self._update_downloader: UpdateInstallerDownloader | None = None
+        self._tray_icon: QSystemTrayIcon | None = None
+        self._tray_show_action: QAction | None = None
+        self._force_close = False
+        self._tray_message_shown = False
 
         self._build_ui()
         self._build_menu()
+        self._setup_system_tray()
         self._sync_controls_from_config()
         self._update_recenter_shortcut()
 
@@ -1122,13 +1129,96 @@ class MainWindow(QMainWindow):
         CameraEnumerator.list_modes(self.config.camera_index)
 
     def closeEvent(self, event) -> None:
+        if self._tray_icon is not None and not self._force_close:
+            event.ignore()
+            self._hide_to_tray()
+            return
         self._stop_tracking()
+        if self._tray_icon is not None:
+            self._tray_icon.hide()
         super().closeEvent(event)
+
+    def changeEvent(self, event: QEvent) -> None:
+        if (
+            event.type() == QEvent.WindowStateChange
+            and self._tray_icon is not None
+            and not self._force_close
+            and self.isMinimized()
+        ):
+            QTimer.singleShot(0, self._hide_to_tray)
+        super().changeEvent(event)
 
     def resizeEvent(self, event: QResizeEvent) -> None:
         super().resizeEvent(event)
         if hasattr(self, "output_mascot_label"):
             self._refresh_output_mascot()
+
+    def _setup_system_tray(self) -> None:
+        if not QSystemTrayIcon.isSystemTrayAvailable():
+            return
+
+        tray_icon = self.windowIcon()
+        if tray_icon.isNull():
+            icon_path = Path(self.assets_path) / "icon.png"
+            if icon_path.exists():
+                tray_icon = QIcon(str(icon_path))
+        if tray_icon.isNull():
+            return
+
+        tray_menu = self._build_tray_menu()
+        self._tray_icon = QSystemTrayIcon(tray_icon, self)
+        self._tray_icon.setToolTip(__app_name__)
+        self._tray_icon.setContextMenu(tray_menu)
+        self._tray_icon.activated.connect(self._on_tray_icon_activated)
+        self._tray_icon.show()
+
+    def _build_tray_menu(self) -> QMenu:
+        tray_menu = QMenu(self)
+        show_action = QAction(self._tr("Open Torvix Tracker"), self)
+        show_action.triggered.connect(self._restore_from_tray)
+        tray_menu.addAction(show_action)
+        self._tray_show_action = show_action
+
+        tray_menu.addSeparator()
+
+        quit_action = QAction(self._tr("Exit"), self)
+        quit_action.triggered.connect(self._quit_from_tray)
+        tray_menu.addAction(quit_action)
+
+        return tray_menu
+
+    def _on_tray_icon_activated(self, reason: QSystemTrayIcon.ActivationReason) -> None:
+        if reason in (
+            QSystemTrayIcon.Trigger,
+            QSystemTrayIcon.DoubleClick,
+            QSystemTrayIcon.MiddleClick,
+        ):
+            self._restore_from_tray()
+
+    def _hide_to_tray(self) -> None:
+        if self._tray_icon is None:
+            return
+        self.hide()
+        if self._tray_show_action is not None:
+            self._tray_show_action.setText(self._tr("Open Torvix Tracker"))
+        if not self._tray_message_shown:
+            self._tray_icon.showMessage(
+                __app_name__,
+                self._tr("Torvix Tracker is running in the system tray."),
+                QSystemTrayIcon.Information,
+                3000,
+            )
+            self._tray_message_shown = True
+
+    def _restore_from_tray(self) -> None:
+        self.setWindowState(self.windowState() & ~Qt.WindowMinimized)
+        self.show()
+        self.raise_()
+        self.activateWindow()
+
+    def _quit_from_tray(self) -> None:
+        self._force_close = True
+        self.close()
 
     def _build_menu(self) -> None:
         self.file_menu = self.menuBar().addMenu(self._tr("File"))
@@ -1167,6 +1257,12 @@ class MainWindow(QMainWindow):
         update_action.triggered.connect(self._check_for_updates)
         self.about_menu.addAction(update_action)
         self._menu_actions["Check for Updates"] = update_action
+
+        exit_action = QAction(self._tr("Exit"), self)
+        exit_action.triggered.connect(self._quit_from_tray)
+        self.file_menu.addSeparator()
+        self.file_menu.addAction(exit_action)
+        self._menu_actions["Exit"] = exit_action
 
     def _build_ui(self) -> None:
         root = QWidget()
@@ -3603,6 +3699,7 @@ def _show_welcome_splash() -> None:
 
 def run_app() -> None:
     app = QApplication(sys.argv)
+    app.setQuitOnLastWindowClosed(False)
     window = MainWindow()
     window.show()
     sys.exit(app.exec())
