@@ -1,5 +1,5 @@
 {
-  "version": "0.1.4",
+  "version": "0.1.5",
   "download_url": "",
-  "changelog": "Eliminacao completa de microstutter: output desacoplado a 120Hz fixo com thread TIME_CRITICAL, relogio unificado perf_counter, interpolacao suave com extrapolacao, spin-wait de precisao sub-ms e timeBeginPeriod(1)."
+  "changelog": "Novo suporte a bandeja do sistema: o Torvix Tracker agora pode ser minimizado para segundo plano, restaurado pelo tray e encerrado de forma explicita pelo menu Sair."
 }
