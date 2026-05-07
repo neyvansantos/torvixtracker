@@ -24,7 +24,7 @@ export default function DashboardPage() {
   const [downloadError, setDownloadError] = useState("");
   const [downloadLinks, setDownloadLinks] = useState<{
     installer?: string;
-    releases?: string;
+    name?: string;
   } | null>(null);
   const [loginRedirect, setLoginRedirect] = useState<string | null>(
     isSupabaseConfigured
@@ -68,8 +68,8 @@ export default function DashboardPage() {
     }
 
     const data = (await response.json()) as {
+      download_name?: string;
       download_url?: string;
-      releases_url?: string;
     };
 
     if (!data.download_url) {
@@ -79,7 +79,7 @@ export default function DashboardPage() {
 
     setDownloadLinks({
       installer: data.download_url,
-      releases: data.releases_url,
+      name: data.download_name,
     });
   }, [router]);
 
@@ -278,20 +278,16 @@ export default function DashboardPage() {
                 : "Compre o Torvix Tracker para liberar o instalador"}
             </p>
             {hasPro ? (
-              <div className="mt-8 grid gap-3 sm:grid-cols-2">
+              <div className="mt-8">
                 <a
-                  className="inline-flex min-h-12 items-center justify-center rounded-md bg-primary px-6 py-3 text-center text-base font-bold text-[#001014] transition hover:bg-white aria-disabled:pointer-events-none aria-disabled:opacity-60"
+                  className="inline-flex min-h-12 w-full items-center justify-center rounded-md bg-primary px-6 py-3 text-center text-base font-bold text-[#001014] transition hover:bg-white aria-disabled:pointer-events-none aria-disabled:opacity-60"
                   aria-disabled={!downloadLinks?.installer || loadingDownloadLinks}
+                  download
                   href={downloadLinks?.installer || undefined}
                 >
-                  {loadingDownloadLinks ? "Preparando link..." : "Instalador Windows"}
-                </a>
-                <a
-                  className="inline-flex min-h-12 items-center justify-center rounded-md border border-primary/35 px-6 py-3 text-center text-base font-bold text-white transition hover:bg-primary-soft aria-disabled:pointer-events-none aria-disabled:opacity-60"
-                  aria-disabled={!downloadLinks?.releases || loadingDownloadLinks}
-                  href={downloadLinks?.releases || undefined}
-                >
-                  Releases e versões
+                  {loadingDownloadLinks
+                    ? "Preparando link..."
+                    : downloadLinks?.name || "Torvix Tracker Setup"}
                 </a>
               </div>
             ) : (

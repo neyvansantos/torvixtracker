@@ -7,7 +7,6 @@ import {
 
 const DEFAULT_DOWNLOAD_URL =
   "https://github.com/NeyvanSantos/TorvixTracker/releases/download/v0.1.5/TorvixTracker_Setup.exe";
-const RELEASES_URL = "https://github.com/NeyvanSantos/TorvixTracker/releases/latest";
 
 function installerDownloadUrl() {
   const configuredUrl = process.env.TORVIX_INSTALLER_DOWNLOAD_URL?.trim();
@@ -15,6 +14,11 @@ function installerDownloadUrl() {
     return DEFAULT_DOWNLOAD_URL;
   }
   return configuredUrl;
+}
+
+function installerVersion(downloadUrl: string) {
+  const versionMatch = downloadUrl.match(/\/releases\/download\/v?([^/]+)\//i);
+  return versionMatch?.[1] || "0.1.5";
 }
 
 export async function POST(request: NextRequest) {
@@ -46,8 +50,12 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Acesso Pro necessário." }, { status: 403 });
   }
 
+  const downloadUrl = installerDownloadUrl();
+  const version = installerVersion(downloadUrl);
+
   return NextResponse.json({
-    download_url: installerDownloadUrl(),
-    releases_url: RELEASES_URL,
+    download_name: `Torvix Tracker Setup v${version}`,
+    download_url: downloadUrl,
+    version,
   });
 }
