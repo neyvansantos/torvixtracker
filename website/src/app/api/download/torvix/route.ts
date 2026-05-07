@@ -1,4 +1,5 @@
 // Copyright (c) 2026 Torvix Tracker. Todos os direitos reservados.
+import { createHmac, timingSafeEqual } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
 import {
   createServerAnonClient,
@@ -7,6 +8,7 @@ import {
 
 const DEFAULT_DOWNLOAD_URL =
   "https://github.com/NeyvanSantos/TorvixTracker/releases/download/v0.1.5/TorvixTracker_Setup.exe";
+const DOWNLOAD_TOKEN_TTL_MS = 10 * 60 * 1000;
 
 function installerDownloadUrl() {
   const configuredUrl = process.env.TORVIX_INSTALLER_DOWNLOAD_URL?.trim();
@@ -19,6 +21,131 @@ function installerDownloadUrl() {
 function installerVersion(downloadUrl: string) {
   const versionMatch = downloadUrl.match(/\/releases\/download\/v?([^/]+)\//i);
   return versionMatch?.[1] || "0.1.5";
+}
+
+function downloadTokenSecret() {
+  return (
+    process.env.TORVIX_DOWNLOAD_SIGNING_SECRET?.trim() ||
+    process.env.SUPABASE_SERVICE_ROLE_KEY?.trim() ||
+    ""
+  );
+}
+
+function signDownloadToken(userId: string) {
+  const secret = downloadTokenSecret();
+  if (!secret) {
+    return null;
+  }
+
+  const payload = Buffer.from(
+    JSON.stringify({
+      exp: Date.now() + DOWNLOAD_TOKEN_TTL_MS,
+      sub: userId,
+    }),
+  ).toString("base64url");
+  const signature = createHmac("sha256", secret).update(payload).digest("base64url");
+
+  return `${payload}.${signature}`;
+}
+
+function verifyDownloadToken(token: string | null) {
+  const secret = downloadTokenSecret();
+  if (!token || !secret) {
+    return null;
+  }
+
+  const [payload, signature] = token.split(".");
+  if (!payload || !signature) {
+    return null;
+  }
+
+  const expectedSignature = createHmac("sha256", secret).update(payload).digest("base64url");
+  const signatureBuffer = Buffer.from(signature);
+  const expectedSignatureBuffer = Buffer.from(expectedSignature);
+
+  if (
+    signatureBuffer.length !== expectedSignatureBuffer.length ||
+    !timingSafeEqual(signatureBuffer, expectedSignatureBuffer)
+  ) {
+    return null;
+  }
+
+  let data: { exp?: number; sub?: string };
+
+  try {
+    data = JSON.parse(Buffer.from(payload, "base64url").toString("utf8")) as {
+      exp?: number;
+      sub?: string;
+    };
+  } catch {
+    return null;
+  }
+
+  if (!data.sub || !data.exp || data.exp < Date.now()) {
+    return null;
+  }
+
+  return data.sub;
+}
+
+async function hasProAccess(userId: string) {
+  const serviceClient = createServiceRoleClient();
+  const { data: profile, error: profileError } = await serviceClient
+    .from("profiles")
+    .select("has_pro")
+    .eq("id", userId)
+    .maybeSingle();
+
+  return !profileError && profile?.has_pro === true;
+}
+
+function installerFileName(version: string) {
+  return `TorvixTracker_Setup_v${version}.exe`;
+}
+
+function githubDownloadHeaders() {
+  const githubToken = process.env.GITHUB_TOKEN?.trim() || process.env.GH_TOKEN?.trim();
+  const headers: HeadersInit = {
+    Accept: "application/octet-stream",
+  };
+
+  if (githubToken) {
+    headers.Authorization = `Bearer ${githubToken}`;
+  }
+
+  return headers;
+}
+
+export async function GET(request: NextRequest) {
+  const userId = verifyDownloadToken(request.nextUrl.searchParams.get("token"));
+  if (!userId) {
+    return NextResponse.json({ error: "Link de download inválido ou expirado." }, { status: 401 });
+  }
+
+  if (!(await hasProAccess(userId))) {
+    return NextResponse.json({ error: "Acesso Pro necessário." }, { status: 403 });
+  }
+
+  const downloadUrl = installerDownloadUrl();
+  const version = installerVersion(downloadUrl);
+  const installerResponse = await fetch(downloadUrl, {
+    headers: githubDownloadHeaders(),
+    redirect: "follow",
+  });
+
+  if (!installerResponse.ok || !installerResponse.body) {
+    return NextResponse.json(
+      { error: "Não foi possível carregar o instalador privado." },
+      { status: 502 },
+    );
+  }
+
+  return new NextResponse(installerResponse.body, {
+    headers: {
+      "Content-Disposition": `attachment; filename="${installerFileName(version)}"`,
+      "Content-Type": installerResponse.headers.get("content-type") || "application/octet-stream",
+    },
+  });
 }
 
 export async function POST(request: NextRequest) {
@@ -39,23 +166,24 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Usuário não autenticado." }, { status: 401 });
   }
 
-  const serviceClient = createServiceRoleClient();
-  const { data: profile, error: profileError } = await serviceClient
-    .from("profiles")
-    .select("has_pro")
-    .eq("id", user.id)
-    .maybeSingle();
-
-  if (profileError || profile?.has_pro !== true) {
+  if (!(await hasProAccess(user.id))) {
     return NextResponse.json({ error: "Acesso Pro necessário." }, { status: 403 });
   }
 
   const downloadUrl = installerDownloadUrl();
   const version = installerVersion(downloadUrl);
+  const token = signDownloadToken(user.id);
+
+  if (!token) {
+    return NextResponse.json(
+      { error: "Servidor de download não configurado." },
+      { status: 500 },
+    );
+  }
 
   return NextResponse.json({
     download_name: `Torvix Tracker Setup v${version}`,
-    download_url: downloadUrl,
+    download_url: `/api/download/torvix?token=${encodeURIComponent(token)}`,
     version,
   });
 }
