@@ -20,13 +20,68 @@ export default function DashboardPage() {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [checkingPayment, setCheckingPayment] = useState(false);
-  const [downloading, setDownloading] = useState(false);
+  const [loadingDownloadLinks, setLoadingDownloadLinks] = useState(false);
   const [downloadError, setDownloadError] = useState("");
+  const [downloadLinks, setDownloadLinks] = useState<{
+    installer?: string;
+    releases?: string;
+  } | null>(null);
   const [loginRedirect, setLoginRedirect] = useState<string | null>(
     isSupabaseConfigured
       ? null
       : "/login?message=Configure o Supabase antes de acessar o painel.",
   );
+  const hasPro = profile?.has_pro === true;
+  const plan = profile?.plan || (hasPro ? "pro" : "free");
+
+  const requestDownloadLinks = useCallback(async (accessToken?: string) => {
+    setDownloadError("");
+    setLoadingDownloadLinks(true);
+
+    const token =
+      accessToken ||
+      (
+        await supabase.auth.getSession()
+      ).data.session?.access_token;
+
+    if (!token) {
+      setLoadingDownloadLinks(false);
+      router.push("/login");
+      return;
+    }
+
+    const response = await fetch("/api/download/torvix", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    setLoadingDownloadLinks(false);
+
+    if (!response.ok) {
+      const data = (await response.json().catch(() => null)) as
+        | { error?: string }
+        | null;
+      setDownloadError(data?.error || "Não foi possível baixar o instalador.");
+      return;
+    }
+
+    const data = (await response.json()) as {
+      download_url?: string;
+      releases_url?: string;
+    };
+
+    if (!data.download_url) {
+      setDownloadError("Link do instalador não encontrado.");
+      return;
+    }
+
+    setDownloadLinks({
+      installer: data.download_url,
+      releases: data.releases_url,
+    });
+  }, [router]);
 
   const refreshProfile = useCallback(async (currentUserId = user?.id) => {
     if (!currentUserId) {
@@ -52,8 +107,12 @@ export default function DashboardPage() {
 
     if (userProfile) {
       setProfile(userProfile);
+
+      if (userProfile.has_pro === true) {
+        await requestDownloadLinks(session?.access_token);
+      }
     }
-  }, [user?.id]);
+  }, [requestDownloadLinks, user?.id]);
 
   useEffect(() => {
     let isMounted = true;
@@ -79,6 +138,10 @@ export default function DashboardPage() {
       setUser(currentUser);
       setProfile(userProfile ?? { plan: "free", has_pro: false });
       setLoading(false);
+
+      if (userProfile?.has_pro === true) {
+        await requestDownloadLinks();
+      }
     }
 
     loadDashboard();
@@ -86,7 +149,7 @@ export default function DashboardPage() {
     return () => {
       isMounted = false;
     };
-  }, [router]);
+  }, [requestDownloadLinks, router]);
 
   useEffect(() => {
     if (!user?.id || profile?.has_pro === true) {
@@ -115,49 +178,6 @@ export default function DashboardPage() {
     router.refresh();
   }
 
-  async function handleDownload() {
-    setDownloadError("");
-    setDownloading(true);
-
-    const {
-      data: { session },
-    } = await supabase.auth.getSession();
-
-    if (!session?.access_token) {
-      setDownloading(false);
-      router.push("/login");
-      return;
-    }
-
-    const response = await fetch("/api/download/torvix", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${session.access_token}`,
-      },
-    });
-
-    setDownloading(false);
-
-    if (!response.ok) {
-      const data = (await response.json().catch(() => null)) as
-        | { error?: string }
-        | null;
-      setDownloadError(data?.error || "Não foi possível baixar o instalador.");
-      return;
-    }
-
-    const data = (await response.json()) as {
-      download_url?: string;
-      releases_url?: string;
-    };
-
-    if (!data.download_url) {
-      setDownloadError("Link do instalador não encontrado.");
-      return;
-    }
-
-    window.location.href = data.download_url;
-  }
 
   if (loginRedirect) {
     redirect(loginRedirect);
@@ -178,9 +198,6 @@ export default function DashboardPage() {
       </main>
     );
   }
-
-  const hasPro = profile.has_pro === true;
-  const plan = profile.plan || (hasPro ? "pro" : "free");
 
   return (
     <main className="relative overflow-hidden">
@@ -261,14 +278,22 @@ export default function DashboardPage() {
                 : "Compre o Torvix Tracker para liberar o instalador"}
             </p>
             {hasPro ? (
-              <button
-                className="mt-8 inline-flex h-12 w-full items-center justify-center rounded-md bg-primary px-6 text-base font-bold text-[#001014] transition hover:bg-white"
-                disabled={downloading}
-                onClick={handleDownload}
-                type="button"
-              >
-                {downloading ? "Preparando download..." : "Download Torvix Tracker"}
-              </button>
+              <div className="mt-8 grid gap-3 sm:grid-cols-2">
+                <a
+                  className="inline-flex min-h-12 items-center justify-center rounded-md bg-primary px-6 py-3 text-center text-base font-bold text-[#001014] transition hover:bg-white aria-disabled:pointer-events-none aria-disabled:opacity-60"
+                  aria-disabled={!downloadLinks?.installer || loadingDownloadLinks}
+                  href={downloadLinks?.installer || undefined}
+                >
+                  {loadingDownloadLinks ? "Preparando link..." : "Instalador Windows"}
+                </a>
+                <a
+                  className="inline-flex min-h-12 items-center justify-center rounded-md border border-primary/35 px-6 py-3 text-center text-base font-bold text-white transition hover:bg-primary-soft aria-disabled:pointer-events-none aria-disabled:opacity-60"
+                  aria-disabled={!downloadLinks?.releases || loadingDownloadLinks}
+                  href={downloadLinks?.releases || undefined}
+                >
+                  Releases e versões
+                </a>
+              </div>
             ) : (
               <Link
                 className="mt-8 inline-flex h-12 w-full items-center justify-center rounded-md border border-primary/35 px-6 text-base font-bold text-white transition hover:bg-primary-soft"
