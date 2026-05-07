@@ -2,6 +2,9 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  outputFileTracingIncludes: {
+    "/api/download/torvix": ["./private/*.exe"],
+  },
   async headers() {
     return [
       {

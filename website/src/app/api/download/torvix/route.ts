@@ -1,14 +1,21 @@
 // Copyright (c) 2026 Torvix Tracker. Todos os direitos reservados.
 import { createHmac, timingSafeEqual } from "node:crypto";
+import { createReadStream } from "node:fs";
+import { stat } from "node:fs/promises";
+import path from "node:path";
+import { Readable } from "node:stream";
 import { NextRequest, NextResponse } from "next/server";
 import {
   createServerAnonClient,
   createServiceRoleClient,
 } from "@/lib/supabase-server";
 
+export const runtime = "nodejs";
+
 const DEFAULT_DOWNLOAD_URL =
   "https://github.com/NeyvanSantos/TorvixTracker/releases/download/v0.1.5/TorvixTracker_Setup.exe";
 const DOWNLOAD_TOKEN_TTL_MS = 10 * 60 * 1000;
+const DEFAULT_INSTALLER_VERSION = "0.1.5";
 
 function installerDownloadUrl() {
   const configuredUrl = process.env.TORVIX_INSTALLER_DOWNLOAD_URL?.trim();
@@ -20,7 +27,7 @@ function installerDownloadUrl() {
 
 function installerVersion(downloadUrl: string) {
   const versionMatch = downloadUrl.match(/\/releases\/download\/v?([^/]+)\//i);
-  return versionMatch?.[1] || "0.1.5";
+  return versionMatch?.[1] || DEFAULT_INSTALLER_VERSION;
 }
 
 function downloadTokenSecret() {
@@ -103,6 +110,22 @@ function installerFileName(version: string) {
   return `TorvixTracker_Setup_v${version}.exe`;
 }
 
+async function localInstaller(version: string) {
+  const fileName = installerFileName(version);
+  const filePath = path.join(/* turbopackIgnore: true */ process.cwd(), "private", fileName);
+
+  try {
+    const fileStat = await stat(filePath);
+    return {
+      fileName,
+      filePath,
+      size: fileStat.size,
+    };
+  } catch {
+    return null;
+  }
+}
+
 function githubDownloadHeaders() {
   const githubToken = process.env.GITHUB_TOKEN?.trim() || process.env.GH_TOKEN?.trim();
   const headers: HeadersInit = {
@@ -128,6 +151,20 @@ export async function GET(request: NextRequest) {
 
   const downloadUrl = installerDownloadUrl();
   const version = installerVersion(downloadUrl);
+  const installer = await localInstaller(version);
+
+  if (installer) {
+    const installerStream = Readable.toWeb(createReadStream(installer.filePath)) as unknown as ReadableStream;
+
+    return new NextResponse(installerStream, {
+      headers: {
+        "Content-Disposition": `attachment; filename="${installer.fileName}"`,
+        "Content-Length": installer.size.toString(),
+        "Content-Type": "application/octet-stream",
+      },
+    });
+  }
+
   const installerResponse = await fetch(downloadUrl, {
     headers: githubDownloadHeaders(),
     redirect: "follow",
