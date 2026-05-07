@@ -1,7 +1,7 @@
 // Copyright (c) 2026 Torvix Tracker. Todos os direitos reservados.
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { createReadStream } from "node:fs";
-import { stat } from "node:fs/promises";
+import { open, stat } from "node:fs/promises";
 import path from "node:path";
 import { Readable } from "node:stream";
 import { NextRequest, NextResponse } from "next/server";
@@ -13,9 +13,10 @@ import {
 export const runtime = "nodejs";
 
 const DEFAULT_DOWNLOAD_URL =
-  "https://github.com/NeyvanSantos/TorvixTracker/releases/download/v0.1.5/TorvixTracker_Setup.exe";
+  "https://raw.githubusercontent.com/NeyvanSantos/TorvixTracker/main/website/private/TorvixTracker_Setup_v0.1.5.exe";
 const DOWNLOAD_TOKEN_TTL_MS = 10 * 60 * 1000;
 const DEFAULT_INSTALLER_VERSION = "0.1.5";
+const MIN_INSTALLER_SIZE_BYTES = 1024 * 1024;
 
 function installerDownloadUrl() {
   const configuredUrl = process.env.TORVIX_INSTALLER_DOWNLOAD_URL?.trim();
@@ -27,7 +28,8 @@ function installerDownloadUrl() {
 
 function installerVersion(downloadUrl: string) {
   const versionMatch = downloadUrl.match(/\/releases\/download\/v?([^/]+)\//i);
-  return versionMatch?.[1] || DEFAULT_INSTALLER_VERSION;
+  const fileVersionMatch = downloadUrl.match(/TorvixTracker_Setup_v([^/.]+(?:\.[^/.]+)*)\.exe/i);
+  return versionMatch?.[1] || fileVersionMatch?.[1] || DEFAULT_INSTALLER_VERSION;
 }
 
 function downloadTokenSecret() {
@@ -116,6 +118,19 @@ async function localInstaller(version: string) {
 
   try {
     const fileStat = await stat(filePath);
+    const file = await open(filePath, "r");
+    const buffer = Buffer.alloc(128);
+    const { bytesRead } = await file.read(buffer, 0, buffer.length, 0);
+    await file.close();
+    const header = buffer.subarray(0, bytesRead).toString("utf8");
+
+    if (
+      fileStat.size < MIN_INSTALLER_SIZE_BYTES ||
+      header.includes("version https://git-lfs.github.com/spec/v1")
+    ) {
+      return null;
+    }
+
     return {
       fileName,
       filePath,
@@ -173,6 +188,14 @@ export async function GET(request: NextRequest) {
   if (!installerResponse.ok || !installerResponse.body) {
     return NextResponse.json(
       { error: "Não foi possível carregar o instalador privado." },
+      { status: 502 },
+    );
+  }
+
+  const remoteSize = Number(installerResponse.headers.get("content-length") || 0);
+  if (remoteSize > 0 && remoteSize < MIN_INSTALLER_SIZE_BYTES) {
+    return NextResponse.json(
+      { error: "O arquivo do instalador está incompleto no servidor." },
       { status: 502 },
     );
   }
