@@ -48,6 +48,14 @@ def test_joystick_hotkey_spec_keeps_device_and_button() -> None:
     assert _parse_joystick_hotkey_spec(spec) == (1, 4)
 
 
+def test_joystick_hotkey_spec_supports_any_controller_button() -> None:
+    spec = "joy:any:4:Controle Botao 5"
+
+    assert _is_structured_hotkey(spec)
+    assert _hotkey_label(spec) == "Controle Botao 5"
+    assert _parse_joystick_hotkey_spec(spec) == (None, 4)
+
+
 def test_xinput_hotkey_spec_keeps_device_and_button_bit() -> None:
     spec = "xinput:0:4096:Controle XInput 1 A"
 

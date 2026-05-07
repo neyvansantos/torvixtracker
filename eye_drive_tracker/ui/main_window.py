@@ -534,8 +534,8 @@ def _make_keyboard_hotkey_spec(vk: int, modifiers: Qt.KeyboardModifiers, key: in
 
 
 def _make_joystick_hotkey_spec(device_id: int, button_index: int) -> str:
-    label = f"Controle {device_id + 1} Botao {button_index + 1}"
-    return f"joy:{device_id}:{button_index}:{label}"
+    label = f"Controle Botao {button_index + 1}"
+    return f"joy:any:{button_index}:{label}"
 
 
 def _make_xinput_hotkey_spec(user_index: int, button_bit: int) -> str:
@@ -563,6 +563,8 @@ def _hotkey_label(spec: str) -> str:
             if parts[3]:
                 return parts[3]
             try:
+                if parts[1] == "any":
+                    return f"Controle Botao {int(parts[2]) + 1}"
                 return f"Controle {int(parts[1]) + 1} Botao {int(parts[2]) + 1}"
             except ValueError:
                 return spec
@@ -588,12 +590,13 @@ def _parse_keyboard_hotkey_spec(spec: str) -> tuple[int, int] | None:
         return None
 
 
-def _parse_joystick_hotkey_spec(spec: str) -> tuple[int, int] | None:
+def _parse_joystick_hotkey_spec(spec: str) -> tuple[int | None, int] | None:
     parts = (spec or "").strip().split(":", 3)
     if len(parts) != 4 or parts[0] != "joy":
         return None
     try:
-        return int(parts[1]), int(parts[2])
+        device_id = None if parts[1] == "any" else int(parts[1])
+        return device_id, int(parts[2])
     except ValueError:
         return None
 
@@ -649,8 +652,15 @@ def _joystick_button_mask(device_id: int) -> int:
     return int(info.dwButtons)
 
 
-def _joystick_button_down(device_id: int, button_index: int) -> bool:
-    if device_id < 0 or button_index < 0:
+def _joystick_button_down(device_id: int | None, button_index: int) -> bool:
+    if button_index < 0:
+        return False
+    if device_id is None:
+        return any(
+            bool(mask & (1 << button_index))
+            for mask in _poll_joystick_masks().values()
+        )
+    if device_id < 0:
         return False
     return bool(_joystick_button_mask(device_id) & (1 << button_index))
 
@@ -694,6 +704,7 @@ class HotkeyCaptureEdit(QLineEdit):
         self.setReadOnly(True)
         self.setFocusPolicy(Qt.StrongFocus)
         self.setCursor(Qt.PointingHandCursor)
+        self.setPlaceholderText("Clique e pressione teclado, controle ou volante")
 
         self._joystick_timer = QTimer(self)
         self._joystick_timer.setTimerType(Qt.PreciseTimer)
@@ -710,6 +721,7 @@ class HotkeyCaptureEdit(QLineEdit):
     def focusInEvent(self, event) -> None:
         super().focusInEvent(event)
         self.selectAll()
+        self.setText("Aguardando entrada...")
         self._joystick_baseline = _poll_joystick_masks()
         self._xinput_baseline = _poll_xinput_masks()
         self._joystick_timer.start()
@@ -1845,22 +1857,29 @@ class MainWindow(QMainWindow):
         layout.addWidget(credit)
         return layout
 
-    def _build_calibration_content(self) -> QGridLayout:
-        layout = QGridLayout()
+    def _build_calibration_content(self) -> QVBoxLayout:
+        layout = QVBoxLayout()
+        layout.setContentsMargins(8, 8, 8, 8)
+        layout.setSpacing(10)
         self.hotkey_edit = HotkeyCaptureEdit()
         self.hotkey_edit.set_hotkey(self.config.recenter_hotkey)
         self.hotkey_edit.hotkeyChanged.connect(self._on_hotkey_changed)
+        capture_hotkey_button = self._button("Capturar atalho")
+        capture_hotkey_button.clicked.connect(lambda: self.hotkey_edit.setFocus(Qt.MouseFocusReason))
         clear_hotkey_button = QPushButton("✕")
         clear_hotkey_button.setFixedWidth(28)
         clear_hotkey_button.setToolTip(self._tr("Clear hotkey"))
         clear_hotkey_button.clicked.connect(lambda: self._set_recenter_hotkey(""))
         self.calibration_status_label = QLabel(self._tr("No saved calibration"))
+        self.calibration_status_label.setWordWrap(True)
         self.recenter_button = self._button("Recenter")
         self.calibrate_center_button = self._button("Calibrate center")
         self.calibrate_left_button = self._button("Calibrate left")
         self.calibrate_right_button = self._button("Calibrate right")
         self.calibrate_up_button = self._button("Calibrate up")
         self.calibrate_down_button = self._button("Calibrate down")
+        self.save_calibration_button = self._button("Salvar calibracao no perfil")
+        self.clear_calibration_button = self._button("Limpar calibracao")
         self.calibrate_gaze_center_button = self._button("Calibrate gaze center")
         self.calibrate_gaze_left_button = self._button("Calibrate gaze left")
         self.calibrate_gaze_right_button = self._button("Calibrate gaze right")
@@ -1872,34 +1891,57 @@ class MainWindow(QMainWindow):
         self.calibrate_right_button.clicked.connect(lambda: self._calibrate_direction("right"))
         self.calibrate_up_button.clicked.connect(lambda: self._calibrate_direction("up"))
         self.calibrate_down_button.clicked.connect(lambda: self._calibrate_direction("down"))
+        self.save_calibration_button.clicked.connect(self._save_current_profile_silently)
+        self.clear_calibration_button.clicked.connect(self._clear_calibration)
         self.calibrate_gaze_center_button.clicked.connect(self._calibrate_gaze_center)
         self.calibrate_gaze_left_button.clicked.connect(lambda: self._calibrate_gaze_direction("left"))
         self.calibrate_gaze_right_button.clicked.connect(lambda: self._calibrate_gaze_direction("right"))
         self.calibrate_gaze_up_button.clicked.connect(lambda: self._calibrate_gaze_direction("up"))
         self.calibrate_gaze_down_button.clicked.connect(lambda: self._calibrate_gaze_direction("down"))
-        layout.addWidget(self._label_with_help("Recenter hotkey", HELP_KEYS["recenter_hotkey"]), 0, 0)
+        hotkey_box = QGroupBox("Atalho de recentralizacao")
+        hotkey_grid = QGridLayout(hotkey_box)
+        hotkey_grid.addWidget(self._label_with_help("Recenter hotkey", HELP_KEYS["recenter_hotkey"]), 0, 0)
         hotkey_layout = QHBoxLayout()
         hotkey_layout.setContentsMargins(0, 0, 0, 0)
         hotkey_layout.addWidget(self.hotkey_edit, 1)
+        hotkey_layout.addWidget(capture_hotkey_button)
         hotkey_layout.addWidget(clear_hotkey_button)
-        layout.addLayout(hotkey_layout, 0, 1, 1, 2)
-        layout.addWidget(self.recenter_button, 1, 0)
-        layout.addWidget(self.calibrate_center_button, 1, 1)
-        layout.addWidget(self.calibrate_left_button, 2, 0)
-        layout.addWidget(self.calibrate_right_button, 2, 1)
-        layout.addWidget(self.calibrate_up_button, 3, 0)
-        layout.addWidget(self.calibrate_down_button, 3, 1)
-        self.auto_calibrate_button = self._button("Auto Calibrar ⚡")
+        hotkey_grid.addLayout(hotkey_layout, 0, 1)
+        hint = QLabel("Clique em Capturar atalho e pressione uma tecla, botao do controle ou botao do volante G29.")
+        hint.setWordWrap(True)
+        hint.setStyleSheet("color: #888; font-size: 11px;")
+        hotkey_grid.addWidget(hint, 1, 0, 1, 2)
+        layout.addWidget(hotkey_box)
+
+        head_box = QGroupBox("Calibracao da cabeca")
+        head_grid = QGridLayout(head_box)
+        head_grid.addWidget(self.recenter_button, 0, 0)
+        head_grid.addWidget(self.calibrate_center_button, 0, 1)
+        head_grid.addWidget(self.calibrate_left_button, 1, 0)
+        head_grid.addWidget(self.calibrate_right_button, 1, 1)
+        head_grid.addWidget(self.calibrate_up_button, 2, 0)
+        head_grid.addWidget(self.calibrate_down_button, 2, 1)
+        self.auto_calibrate_button = self._button("Auto Calibrar")
         self.auto_calibrate_button.setStyleSheet("background-color: #2D5A27; color: white; font-weight: bold; height: 32px;")
         self.auto_calibrate_button.clicked.connect(self._open_auto_calibrate)
-        layout.addWidget(self.auto_calibrate_button, 4, 0, 1, 2)
-        layout.addWidget(self._label("Iris calibration"), 5, 0, 1, 2)
-        layout.addWidget(self.calibrate_gaze_center_button, 6, 0, 1, 2)
-        layout.addWidget(self.calibrate_gaze_left_button, 7, 0)
-        layout.addWidget(self.calibrate_gaze_right_button, 7, 1)
-        layout.addWidget(self.calibrate_gaze_up_button, 8, 0)
-        layout.addWidget(self.calibrate_gaze_down_button, 8, 1)
-        layout.addWidget(self.calibration_status_label, 9, 0, 1, 3)
+        head_grid.addWidget(self.auto_calibrate_button, 3, 0, 1, 2)
+        layout.addWidget(head_box)
+
+        iris_box = QGroupBox("Calibracao da iris")
+        iris_grid = QGridLayout(iris_box)
+        iris_grid.addWidget(self.calibrate_gaze_center_button, 0, 0, 1, 2)
+        iris_grid.addWidget(self.calibrate_gaze_left_button, 1, 0)
+        iris_grid.addWidget(self.calibrate_gaze_right_button, 1, 1)
+        iris_grid.addWidget(self.calibrate_gaze_up_button, 2, 0)
+        iris_grid.addWidget(self.calibrate_gaze_down_button, 2, 1)
+        layout.addWidget(iris_box)
+
+        profile_box = QGroupBox("Perfil")
+        profile_grid = QGridLayout(profile_box)
+        profile_grid.addWidget(self.save_calibration_button, 0, 0)
+        profile_grid.addWidget(self.clear_calibration_button, 0, 1)
+        profile_grid.addWidget(self.calibration_status_label, 1, 0, 1, 2)
+        layout.addWidget(profile_box)
         return layout
 
     def _build_output_content(self) -> QVBoxLayout:
@@ -3226,6 +3268,42 @@ class MainWindow(QMainWindow):
     def _set_combo_by_data(self, combo: QComboBox, value: str) -> None:
         index = combo.findData(value)
         combo.setCurrentIndex(index if index >= 0 else 0)
+
+    def _save_current_profile_silently(self) -> None:
+        self.config.profile_name = self.profile_name_edit.text().strip() or self.config.profile_name or "Manual Profile"
+        path = self.profile_manager.default_path(self.config.profile_name)
+        self.profile_manager.save(path, self.config, self.config.profile_name)
+        self.calibration_status_label.setText(f"{self._tr('Saved: ')}{path.name}")
+
+    def _clear_calibration(self) -> None:
+        self.config.calibration_center_set = False
+        self.config.calibration_center_yaw = 0.0
+        self.config.calibration_center_pitch = 0.0
+        self.config.calibration_center_roll = 0.0
+        self.config.calibration_center_x = None
+        self.config.calibration_center_y = None
+        self.config.calibration_center_z = None
+        self.config.calibration_left_set = False
+        self.config.calibration_left_yaw = 0.0
+        self.config.calibration_right_set = False
+        self.config.calibration_right_yaw = 0.0
+        self.config.calibration_up_set = False
+        self.config.calibration_up_pitch = 0.0
+        self.config.calibration_down_set = False
+        self.config.calibration_down_pitch = 0.0
+        self.config.gaze_calibration_center_set = False
+        self.config.gaze_calibration_center_yaw = 0.0
+        self.config.gaze_calibration_center_pitch = 0.0
+        self.config.gaze_calibration_left_set = False
+        self.config.gaze_calibration_left_yaw = 0.0
+        self.config.gaze_calibration_right_set = False
+        self.config.gaze_calibration_right_yaw = 0.0
+        self.config.gaze_calibration_up_set = False
+        self.config.gaze_calibration_up_pitch = 0.0
+        self.config.gaze_calibration_down_set = False
+        self.config.gaze_calibration_down_pitch = 0.0
+        self.pose_filter.reset()
+        self._update_calibration_status_from_config()
 
     def _update_calibration_status_from_config(self) -> None:
         saved = []

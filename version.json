@@ -1,5 +1,6 @@
 {
-  "version": "0.1.5",
+  "version": "0.1.6",
   "download_url": "",
-  "changelog": "Novo suporte a bandeja do sistema: o Torvix Tracker agora pode ser minimizado para segundo plano, restaurado pelo tray e encerrado de forma explicita pelo menu Sair."
+  "changelog": "Aba de foco refeita com captura de atalho para teclado, controle e volante, melhorias na calibração e botões para salvar ou limpar calibração do perfil.",
+  "sha256": "391ba6e0a5fa81814f248e6972969c811e83448ef5418cc5e3afc13704a75f8a"
 }
