@@ -13,7 +13,7 @@ import {
 export const runtime = "nodejs";
 
 const DEFAULT_DOWNLOAD_URL =
-  "https://www.dropbox.com/scl/fi/3apjnkwcx6r71zwoq4xy5/TorvixTracker_Setup.exe?rlkey=836cx4wubb9qe4l5cze5npzh8&st=slpwf6ww&dl=1";
+  "https://www.dropbox.com/scl/fi/3apjnkwcx6r71zwoq4xy5/TorvixTracker_Setup.exe?rlkey=836cx4wubb9qe4l5cze5npzh8&st=n70apljf&dl=1";
 const DOWNLOAD_TOKEN_TTL_MS = 10 * 60 * 1000;
 const DEFAULT_INSTALLER_VERSION = "0.1.6";
 const MIN_INSTALLER_SIZE_BYTES = 1024 * 1024;
