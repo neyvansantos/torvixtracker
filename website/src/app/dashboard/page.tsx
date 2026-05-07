@@ -14,6 +14,14 @@ import {
 import { getCurrentUser, getUserProfile, type UserProfile } from "@/lib/auth";
 import { isSupabaseConfigured, supabase } from "@/lib/supabase";
 
+type OrderHistoryItem = {
+  amount: number | null;
+  created_at: string | null;
+  id: string;
+  payment_status: string | null;
+  product_name: string | null;
+};
+
 export default function DashboardPage() {
   const router = useRouter();
   const [user, setUser] = useState<User | null>(null);
@@ -26,6 +34,7 @@ export default function DashboardPage() {
     installer?: string;
     name?: string;
   } | null>(null);
+  const [orderHistory, setOrderHistory] = useState<OrderHistoryItem[]>([]);
   const [loginRedirect, setLoginRedirect] = useState<string | null>(
     isSupabaseConfigured
       ? null
@@ -83,6 +92,34 @@ export default function DashboardPage() {
     });
   }, [router]);
 
+  const requestOrderHistory = useCallback(async (accessToken?: string) => {
+    const token =
+      accessToken ||
+      (
+        await supabase.auth.getSession()
+      ).data.session?.access_token;
+
+    if (!token) {
+      return;
+    }
+
+    const response = await fetch("/api/account/orders", {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    if (!response.ok) {
+      return;
+    }
+
+    const data = (await response.json()) as {
+      orders?: OrderHistoryItem[];
+    };
+
+    setOrderHistory(data.orders || []);
+  }, []);
+
   const refreshProfile = useCallback(async (currentUserId = user?.id) => {
     if (!currentUserId) {
       return;
@@ -107,12 +144,13 @@ export default function DashboardPage() {
 
     if (userProfile) {
       setProfile(userProfile);
+      await requestOrderHistory(session?.access_token);
 
       if (userProfile.has_pro === true) {
         await requestDownloadLinks(session?.access_token);
       }
     }
-  }, [requestDownloadLinks, user?.id]);
+  }, [requestDownloadLinks, requestOrderHistory, user?.id]);
 
   useEffect(() => {
     let isMounted = true;
@@ -138,6 +176,7 @@ export default function DashboardPage() {
       setUser(currentUser);
       setProfile(userProfile ?? { plan: "free", has_pro: false });
       setLoading(false);
+      await requestOrderHistory();
 
       if (userProfile?.has_pro === true) {
         await requestDownloadLinks();
@@ -149,7 +188,7 @@ export default function DashboardPage() {
     return () => {
       isMounted = false;
     };
-  }, [requestDownloadLinks, router]);
+  }, [requestDownloadLinks, requestOrderHistory, router]);
 
   useEffect(() => {
     if (!user?.id || profile?.has_pro === true) {
@@ -198,6 +237,21 @@ export default function DashboardPage() {
       </main>
     );
   }
+
+  const visibleOrders =
+    orderHistory.length > 0
+      ? orderHistory
+      : hasPro
+        ? [
+            {
+              amount: null,
+              created_at: null,
+              id: "pro",
+              payment_status: "approved",
+              product_name: PRODUCT_NAME,
+            },
+          ]
+        : [];
 
   return (
     <main className="relative overflow-hidden">
@@ -270,25 +324,70 @@ export default function DashboardPage() {
         <div className="mt-5 grid gap-5 md:grid-cols-1">
           <article className="rounded-2xl border border-border bg-surface p-6 opacity-85">
             <h2 className="text-2xl font-bold text-white">
-              {hasPro ? "Baixar" : "Compra necessária"}
+              {hasPro ? "Histórico de pedidos" : "Compra necessária"}
             </h2>
             <p className="mt-3 leading-7 text-muted">
               {hasPro
-                ? "Baixe o instalador completo do Torvix Tracker."
+                ? "Acesse seus downloads liberados para esta conta."
                 : "Compre o Torvix Tracker para liberar o instalador"}
             </p>
             {hasPro ? (
-              <div className="mt-8">
-                <a
-                  className="inline-flex min-h-12 w-full items-center justify-center rounded-md bg-primary px-6 py-3 text-center text-base font-bold text-[#001014] transition hover:bg-white aria-disabled:pointer-events-none aria-disabled:opacity-60"
-                  aria-disabled={!downloadLinks?.installer || loadingDownloadLinks}
-                  download
-                  href={downloadLinks?.installer || undefined}
-                >
-                  {loadingDownloadLinks
-                    ? "Preparando link..."
-                    : downloadLinks?.name || "Torvix Tracker Setup"}
-                </a>
+              <div className="mt-8 overflow-x-auto rounded-md border border-border">
+                <table className="min-w-full border-collapse text-left text-sm">
+                  <thead className="bg-black/25 text-xs uppercase tracking-[0.08em] text-muted">
+                    <tr>
+                      <th className="px-5 py-4 font-semibold">Pedido</th>
+                      <th className="px-5 py-4 font-semibold">Data</th>
+                      <th className="px-5 py-4 font-semibold">Status do pagamento</th>
+                      <th className="px-5 py-4 font-semibold">Status do pedido</th>
+                      <th className="px-5 py-4 font-semibold">Total</th>
+                      <th className="px-5 py-4 font-semibold">Downloads</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border">
+                    {visibleOrders.map((order) => {
+                      const isApproved = order.payment_status === "approved";
+
+                      return (
+                        <tr key={order.id} className="text-white">
+                          <td className="whitespace-nowrap px-5 py-4">
+                            <span className="rounded-md border border-border bg-black/25 px-3 py-2 text-xs text-muted">
+                              #{shortOrderId(order.id)}
+                            </span>
+                          </td>
+                          <td className="whitespace-nowrap px-5 py-4">
+                            {formatOrderDate(order.created_at)}
+                          </td>
+                          <td className="whitespace-nowrap px-5 py-4">
+                            {formatPaymentStatus(order.payment_status)}
+                          </td>
+                          <td className="whitespace-nowrap px-5 py-4">
+                            {isApproved ? "Finalizado" : "Aguardando pagamento"}
+                          </td>
+                          <td className="whitespace-nowrap px-5 py-4">
+                            {formatOrderAmount(order.amount)}
+                          </td>
+                          <td className="whitespace-nowrap px-5 py-4">
+                            {isApproved ? (
+                              <a
+                                className="font-semibold text-primary underline-offset-4 transition hover:text-white hover:underline aria-disabled:pointer-events-none aria-disabled:text-muted"
+                                aria-disabled={!downloadLinks?.installer || loadingDownloadLinks}
+                                download
+                                href={downloadLinks?.installer || undefined}
+                              >
+                                {loadingDownloadLinks
+                                  ? "Preparando link..."
+                                  : downloadLinks?.name || "Download"}
+                              </a>
+                            ) : (
+                              <span className="text-muted">Indisponível</span>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
               </div>
             ) : (
               <Link
@@ -306,6 +405,53 @@ export default function DashboardPage() {
       </section>
     </main>
   );
+}
+
+function shortOrderId(orderId: string) {
+  if (orderId === "pro") {
+    return "PRO";
+  }
+
+  return orderId.replaceAll("-", "").slice(0, 8).toUpperCase();
+}
+
+function formatOrderDate(date: string | null) {
+  if (!date) {
+    return "-";
+  }
+
+  return new Intl.DateTimeFormat("pt-BR", {
+    day: "2-digit",
+    month: "long",
+    year: "numeric",
+  }).format(new Date(date));
+}
+
+function formatOrderAmount(amount: number | null) {
+  if (typeof amount !== "number") {
+    return "-";
+  }
+
+  return new Intl.NumberFormat("pt-BR", {
+    currency: "BRL",
+    style: "currency",
+  }).format(amount);
+}
+
+function formatPaymentStatus(status: string | null) {
+  if (status === "approved") {
+    return "Pago";
+  }
+
+  if (status === "pending" || status === "in_process") {
+    return "Pendente";
+  }
+
+  if (status === "rejected") {
+    return "Recusado";
+  }
+
+  return status || "-";
 }
 
 function StatusRow({ label, value }: { label: string; value: string }) {
