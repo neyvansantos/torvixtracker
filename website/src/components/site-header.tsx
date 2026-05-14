@@ -16,7 +16,7 @@ export function SiteHeader() {
       <nav className="relative mx-auto flex h-16 w-full max-w-6xl items-center justify-between gap-3 px-4 sm:px-6 lg:px-8">
         <Link className="flex min-w-0 items-center gap-2 sm:gap-3" href="/">
           <Image
-            alt=""
+            alt="Ícone do Torvix Tracker"
             className="h-8 w-auto sm:h-10"
             height={980}
             priority

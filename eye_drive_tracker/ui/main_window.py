@@ -55,6 +55,7 @@ from eye_drive_tracker.updater import UpdateChecker, UpdateInstallerDownloader, 
 from .controls import FloatSlider
 from .camera_settings_dialog import CameraSettingsDialog
 from .calibration_wizard import CalibrationWizard
+from .onboarding_wizard import OnboardingWizard
 from .i18n import LANGUAGES, translate
 
 
@@ -1130,8 +1131,38 @@ class MainWindow(QMainWindow):
         self._build_ui()
         self._build_menu()
         self._setup_system_tray()
-        self._sync_controls_from_config()
         self._update_recenter_shortcut()
+
+        # Carregar último perfil ou iniciar assistente
+        QTimer.singleShot(100, self._auto_load_or_onboarding)
+
+    def _auto_load_or_onboarding(self) -> None:
+        last_path = self.profile_manager.get_last_profile_path()
+        if last_path:
+            try:
+                self.config = self.profile_manager.load(last_path)
+                self.output_manager.set_mode(self.config.output_mode)
+                self._sync_controls_from_config()
+            except Exception:
+                pass
+        
+        if not self.config.onboarding_completed:
+            self._open_onboarding_wizard()
+
+    def _open_onboarding_wizard(self) -> None:
+        self._stop_tracking()
+        wizard = OnboardingWizard(self.config, parent=self)
+        wizard.finished_onboarding.connect(self._on_onboarding_finished)
+        wizard.show()
+
+    def _on_onboarding_finished(self, new_config: TrackingConfig) -> None:
+        self.config = new_config
+        self._sync_controls_from_config()
+        # Salvar como perfil padrão
+        path = self.profile_manager.default_path(self.config.profile_name)
+        self.profile_manager.save(path, self.config)
+        self.profile_manager.set_last_profile_path(path)
+        QMessageBox.information(self, __app_name__, self._tr("Setup completed successfully!"))
 
     def _load_camera_devices_async(self) -> None:
         self.camera_devices = CameraEnumerator.list_cameras()
@@ -1252,6 +1283,11 @@ class MainWindow(QMainWindow):
         game_functions_action.triggered.connect(self._show_game_functions_dialog)
         self.help_menu.addAction(game_functions_action)
         self._menu_actions["Game Functions"] = game_functions_action
+
+        onboarding_action = QAction(self._tr("Redo Tutorial"), self)
+        onboarding_action.triggered.connect(self._open_onboarding_wizard)
+        self.help_menu.addAction(onboarding_action)
+        self._menu_actions["Redo Tutorial"] = onboarding_action
 
         self.about_menu = self.menuBar().addMenu(self._tr("About"))
 
@@ -3273,6 +3309,7 @@ class MainWindow(QMainWindow):
         self.config.profile_name = self.profile_name_edit.text().strip() or self.config.profile_name or "Manual Profile"
         path = self.profile_manager.default_path(self.config.profile_name)
         self.profile_manager.save(path, self.config, self.config.profile_name)
+        self.profile_manager.set_last_profile_path(path)
         self.calibration_status_label.setText(f"{self._tr('Saved: ')}{path.name}")
 
     def _clear_calibration(self) -> None:
@@ -3343,6 +3380,7 @@ class MainWindow(QMainWindow):
         if not path:
             return
         self.profile_manager.save(Path(path), self.config, self.config.profile_name)
+        self.profile_manager.set_last_profile_path(path)
 
     def _load_profile(self) -> None:
         path, _selected = QFileDialog.getOpenFileName(
@@ -3355,6 +3393,7 @@ class MainWindow(QMainWindow):
             return
         try:
             self.config = self.profile_manager.load(Path(path))
+            self.profile_manager.set_last_profile_path(path)
             self.output_manager.set_mode(self.config.output_mode)
             self.pose_filter.reset()
             self._sync_controls_from_config()
@@ -3694,11 +3733,19 @@ class MainWindow(QMainWindow):
     def _show_changelog(self):
         dialog = QMessageBox(self)
         dialog.setWindowTitle(self._tr("Changelog"))
-        
+
         # Histórico de mudanças com estilo
         content = f"""
         <div style='font-family: sans-serif; min-width: 400px;'>
-            <h3 style='color: #2196F3;'>v1.3.0 - {self._tr("Precision Improvement (Iris Update)")}</h3>
+            <h3 style='color: #2196F3;'>v1.4.0 - Onboarding Update</h3>
+            <ul style='line-height: 1.4;'>
+                <li><b>{self._tr("Onboarding Wizard: New guided setup for camera, resolution and filters.")}</b></li>
+                <li><b>{self._tr("Auto-load: App now remembers and loads your last used profile.")}</b></li>
+                <li><b>{self._tr("Language Selection: Choose your language right at the start.")}</b></li>
+            </ul>
+
+            <h3 style='color: #666;'>v1.3.0 - {self._tr("Precision Improvement (Iris Update)")}</h3>
+
             <ul style='line-height: 1.4;'>
                 <li><b>{self._tr("Iris Tracking: MediaPipe refinement enabled for millimeter precision.")}</b></li>
                 <li><b>{self._tr("Adaptive Filters: New smoothing logic eliminates resting jitter.")}</b></li>

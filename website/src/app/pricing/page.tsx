@@ -1,6 +1,13 @@
 // Copyright (c) 2026 Torvix Tracker. Todos os direitos reservados.
 import Link from "next/link";
+import type { Metadata } from "next";
 import { PRICE_FULL, PRICE_TEXT, PRODUCT_NAME } from "@/config/product";
+
+export const metadata: Metadata = {
+  title: "Planos e Preços",
+  description:
+    "Confira os planos do Torvix Tracker Pro. Pagamento único, sem mensalidades, acesso imediato.",
+};
 
 const proFeatures = [
   "Pagamento único",

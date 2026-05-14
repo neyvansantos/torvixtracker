@@ -1,7 +1,7 @@
 ; Copyright (c) 2026 Torvix Tracker. Todos os direitos reservados.
 ; Script gerado pelo Antigravity para o Torvix Tracker
 #define AppName "Torvix Tracker"
-#define AppVersion "0.1.6"
+#define AppVersion "0.1.7"
 #define AppPublisher "Torvix Tracker"
 #define AppURL "https://github.com/NeyvanSantos/TorvixTracker"
 #define AppExeName "TorvixTracker.exe"

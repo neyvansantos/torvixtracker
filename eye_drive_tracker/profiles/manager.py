@@ -20,6 +20,17 @@ class ProfileManager:
                 base_dir = Path(__file__).resolve().parent.parent.parent / "profiles"
         self.base_dir = Path(base_dir)
         self.base_dir.mkdir(parents=True, exist_ok=True)
+        self.last_profile_path = self.base_dir / "last_profile.txt"
+
+    def get_last_profile_path(self) -> Path | None:
+        if self.last_profile_path.exists():
+            path = Path(self.last_profile_path.read_text(encoding="utf-8").strip())
+            if path.exists():
+                return path
+        return None
+
+    def set_last_profile_path(self, path: str | Path) -> None:
+        self.last_profile_path.write_text(str(Path(path).resolve()), encoding="utf-8")
 
     def default_path(self, name: str = "profile") -> Path:
         safe = "".join(ch if ch.isalnum() or ch in ("-", "_") else "_" for ch in name).strip("_")

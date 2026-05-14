@@ -1,6 +1,6 @@
 {
-  "version": "0.1.6",
+  "version": "0.1.7",
   "download_url": "",
-  "changelog": "Aba de foco refeita com captura de atalho para teclado, controle e volante, melhorias na calibração e botões para salvar ou limpar calibração do perfil.",
-  "sha256": "391ba6e0a5fa81814f248e6972969c811e83448ef5418cc5e3afc13704a75f8a"
+  "changelog": "Novo Assistente de Introdução (Onboarding Wizard) para novos usuários, suporte a múltiplos idiomas no primeiro uso, carregamento automático do último perfil e interface de configuração de câmera aprimorada.",
+  "sha256": ""
 }

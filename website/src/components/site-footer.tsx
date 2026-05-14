@@ -8,7 +8,7 @@ export function SiteFooter() {
       <div className="mx-auto flex w-full max-w-6xl flex-col items-center gap-5 px-4 py-8 text-center text-sm text-muted sm:flex-row sm:justify-between sm:px-6 sm:text-left lg:px-8">
         <div className="flex max-w-xs flex-col items-center gap-3 sm:max-w-none sm:flex-row">
           <Image
-            alt=""
+            alt="Logo Torvix Tracker"
             className="h-8 w-auto"
             height={980}
             src="/torvix-logo.png"

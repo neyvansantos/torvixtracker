@@ -133,6 +133,8 @@ class TrackingConfig:
 
     output_mode: str = "opentrack_udp"
 
+    onboarding_completed: bool = False
+
     def to_dict(self) -> dict:
         return asdict(self)
 

@@ -1,4 +1,12 @@
 // Copyright (c) 2026 Torvix Tracker. Todos os direitos reservados.
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "Perguntas Frequentes",
+  description:
+    "Dúvidas sobre o Torvix Tracker? Confira nossa lista de perguntas frequentes sobre compatibilidade, webcam e atualizações.",
+};
+
 const faqs = [
   {
     question: "Preciso de Tobii Eye Tracker?",
@@ -47,6 +55,23 @@ const faqs = [
 export default function FaqPage() {
   return (
     <main className="relative overflow-hidden">
+      <script
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "FAQPage",
+            "mainEntity": faqs.map(faq => ({
+              "@type": "Question",
+              "name": faq.question,
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": faq.answer
+              }
+            }))
+          }),
+        }}
+        type="application/ld+json"
+      />
       <div className="pointer-events-none absolute inset-0 -z-10 bg-[linear-gradient(180deg,rgba(0,229,255,0.16)_0%,rgba(0,72,82,0.08)_24%,rgba(5,8,10,0.02)_58%,rgba(0,229,255,0.08)_100%)]" />
       <div className="pointer-events-none absolute left-1/2 top-20 -z-10 h-[560px] w-[960px] -translate-x-1/2 rounded-full bg-primary/12 blur-3xl" />
 
