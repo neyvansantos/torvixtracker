@@ -301,6 +301,7 @@ class OnboardingWizard(QDialog):
     def _load_camera_devices(self) -> None:
         devices = CameraEnumerator.list_cameras()
         self.camera_devices = devices
+        self.camera_combo.blockSignals(True)
         self.camera_combo.clear()
         for dev in devices:
             self.camera_combo.addItem(dev.name, dev.index)
@@ -311,20 +312,36 @@ class OnboardingWizard(QDialog):
             self.camera_combo.setCurrentIndex(idx)
         elif self.camera_combo.count() > 0:
             self.camera_combo.setCurrentIndex(0)
+        self.camera_combo.blockSignals(False)
+
+        if self.camera_combo.currentIndex() >= 0:
+            cam_idx = self.camera_combo.currentData()
+            self.config.camera_index = cam_idx
+            self._update_modes(cam_idx)
+        else:
+            self.preview_label.clear()
+            self.preview_label.setText("Nenhuma c\u00e2mera encontrada")
 
     def _on_camera_selected(self, index: int) -> None:
-        if index < 0: return
+        if index < 0:
+            return
         cam_idx = self.camera_combo.itemData(index)
+        if cam_idx is None:
+            return
         self.config.camera_index = cam_idx
         
         # Abrir câmera e carregar modos
-        self.camera.close()
+        self._timer.stop()
+        self.preview_label.clear()
+        self.preview_label.setText("Iniciando c\u00e2mera...")
+        self.camera.release()
         if self.camera.open(cam_idx):
             self._update_modes(cam_idx)
             # Iniciar timer se estivermos na página de preview ou calibração
             if self.current_step in (1, 4):
                 self._timer.start()
         else:
+            self.preview_label.clear()
             self.preview_label.setText("Câmera ocupada ou não encontrada")
 
     def _update_modes(self, cam_idx: int) -> None:
@@ -349,11 +366,14 @@ class OnboardingWizard(QDialog):
         # Preview na Página 1
         if self.current_step == 1:
             rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-            h, w, ch = rgb.shape
-            qimg = QImage(rgb.data, w, h, ch * w, QImage.Format_RGB888)
-            pix = QPixmap.fromImage(qimg).scaled(480, 270, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+            h, w, _ = rgb.shape
+            qimg = QImage(rgb.data, w, h, rgb.strides[0], QImage.Format_RGB888)
+            pix = QPixmap.fromImage(qimg).scaled(
+                self.preview_label.size(),
+                Qt.KeepAspectRatio,
+                Qt.SmoothTransformation,
+            )
             self.preview_label.setPixmap(pix)
-            self.preview_label.setText("")
             
         # Tracking/Calibração na Página 4
         if self.current_step == 4:
@@ -401,8 +421,9 @@ class OnboardingWizard(QDialog):
         if self.current_step in (1, 4):
             if not self.camera.is_open:
                 self._on_camera_selected(self.camera_combo.currentIndex())
-            self._timer.start()
-            if self.current_step == 4:
+            if self.camera.is_open:
+                self._timer.start()
+            if self.current_step == 4 and self.camera.is_open:
                 self.worker.start()
         else:
             self._timer.stop()
@@ -468,7 +489,7 @@ class OnboardingWizard(QDialog):
 
     def _finish(self) -> None:
         self.config.onboarding_completed = True
-        self.camera.close()
+        self.camera.release()
         self.worker.stop()
         self.finished_onboarding.emit(self.config)
         self.accept()
@@ -490,6 +511,6 @@ class OnboardingWizard(QDialog):
         """)
 
     def closeEvent(self, event) -> None:
-        self.camera.close()
+        self.camera.release()
         self.worker.stop()
         super().closeEvent(event)
